@@ -41,7 +41,7 @@ const invoiceController = {
 
       const pdfFileName = `${invoice.invoiceNumber}.pdf`;
       const pdfPath = path.join(process.cwd(), 'public', 'invoices', pdfFileName);
-      const qrUrl = `https://d96686975e76.ngrok-free.app/invoices/${pdfFileName}`;
+      const qrUrl = `http://45.55.137.96:5150/invoices/${pdfFileName}`;
       const qrData = await QRCode.toDataURL(qrUrl);
 
       const html = await ejs.renderFile(
@@ -74,6 +74,19 @@ const invoiceController = {
   getAllInvoicesdata:async(req,res)=>{
     try{
         const data = await Invoice.find()
+        if(!data){
+            return res.status(404).send({message:"Data not found"})
+        }
+        return res.status(200).send({message:"Fetch data Successfully",data:data})
+    }catch(error){
+        res.status(500).json({message:"Internal Server Error",error:error.message})
+
+    }
+  },
+  getinvoiceData:async(req,res)=>{
+    try{
+        const invoiceId=req.params.id
+        const data = await Invoice.findOne({invoiceNumber:invoiceId});
         if(!data){
             return res.status(404).send({message:"Data not found"})
         }
