@@ -20,8 +20,7 @@
     .logo {
       float: right;
       width: 130px;
-      margin-top: -50px;
-
+      margin-top: -50px; /* Adjusted to match the image */
     }
 
     .flex-row {
@@ -92,7 +91,7 @@
     <img class="logo" src="data:image/png;base64,<%= logoBase64 %>" alt="Logo" />
   </div>
 
-  <div class="flex-row" >
+  <div class="flex-row">
     <div class="invoice-info">
       <p><span class="invoice-label">Invoice #:</span> <%= invoice.invoiceNumber %></p>
     </div>
@@ -101,7 +100,7 @@
     </div>
   </div>
 
-  <div class="flex-row" style="display: flex; position: relative; top: 40px;">
+  <div class="flex-row" >
     <div class="buyer-info">
       <p><strong>Buyer:</strong></p>
       <p><%= invoice.buyerBusinessName %></p>
@@ -110,7 +109,7 @@
       <p>NTN : <%= invoice.buyerNTNCNIC %></p>
       <p>TYPE : <%= invoice.buyerRegistrationType %></p>
     </div>
-    <div class="seller-info" style="display: flex; justify-content: right; margin-left: 37rem; position: relative; bottom: 130px;">
+    <div class="seller-info">
       <p><strong>Seller:</strong></p>
       <p><%= invoice.sellerBusinessName %></p>
       <p><%= invoice.sellerAddress %></p>
@@ -165,11 +164,11 @@
     <p><strong>Total: RS. <%= grandTotal.toFixed(2) %></strong></p>
   </div>
 
-  <div class="total-in-words" style="display: flex; position: relative; bottom: 60px;">
+  <div class="total-in-words" style="display: flex; position: relative; bottom: 70px;">
     <p>Total in words: <%= convertToWords(grandTotal) %> Rupees Only</p>
   </div>
 
-  <div class="qr-box" style="display: flex; position: relative; bottom: 25px;">
+  <div class="qr-box">
     <img src="<%= qrData %>" width="130" />
   </div>
 

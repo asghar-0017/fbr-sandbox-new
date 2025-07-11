@@ -17,12 +17,12 @@
     "ejs": "^3.1.10",
     "express": "^5.1.0",
     "helmet": "^8.1.0",
-    "html-pdf": "^3.0.1",
     "logger": "^0.0.1",
     "mongoose": "^8.16.2",
     "nodemon": "^3.1.10",
     "number-to-words": "^1.2.4",
     "path": "^0.12.7",
+    "puppeteer": "^24.12.1",
     "qrcode": "^1.5.4"
   }
 }
