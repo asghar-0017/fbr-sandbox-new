@@ -38,27 +38,34 @@ const invoiceController = {
 
       // Base64 encode logo
       const logoPath = path.join(process.cwd(), 'public', 'fbr_logo.png');
-      const logoBase64 = fs.readFileSync(logoPath).toString('base64');
+      const fbrLogoBase64 = fs.readFileSync(logoPath).toString('base64');
 
       // Generate QR Code data
       const pdfFileName = `${invoice.invoiceNumber}.pdf`;
       const pdfPath = path.join(process.cwd(), 'public', 'invoices', pdfFileName);
+
+      // Add new variable for company logo
+      const companyLogoPath = path.join(process.cwd(), 'public', 'fbr-logo-1.png');
+      const companyLogoBase64 = fs.readFileSync(companyLogoPath).toString('base64');
+      
       const qrUrl = `http://45.55.137.96:5150/invoices/${pdfFileName}`;
       const qrData = await QRCode.toDataURL(qrUrl);
 
       // Render HTML from EJS template
       const html = await ejs.renderFile(
-        path.join(process.cwd(), 'src', 'views', 'invoiceTemplate.ejs'),
-        {
-          invoice,
-          qrData,
-          logoBase64,
-          convertToWords: (amount) => {
-            const words = toWords(Math.floor(amount));
-            return words.charAt(0).toUpperCase() + words.slice(1);
-          }
-        }
-      );
+  path.join(process.cwd(), 'src', 'views', 'invoiceTemplate.ejs'),
+  {
+    invoice,
+    qrData,
+    fbrLogoBase64,
+    companyLogoBase64,
+    convertToWords: (amount) => {
+      const words = toWords(Math.floor(amount));
+      return words.charAt(0).toUpperCase() + words.slice(1);
+    }
+  }
+);
+
 
       // Generate PDF using Puppeteer
       const browser = await puppeteer.launch({

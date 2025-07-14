@@ -20,7 +20,7 @@
     .logo {
       float: right;
       width: 130px;
-      margin-top: -50px; /* Adjusted to match the image */
+      margin-top: -50px;
     }
 
     .flex-row {
@@ -76,8 +76,20 @@
     }
 
     .qr-box {
-      float: right;
-      margin-top: 10px;
+      display: flex;
+      justify-content: right;
+      align-items: right;
+      margin-top: 20px;
+    }
+    .fbr-logo{
+      width: 200px;
+    }
+
+    .qr-box img {
+      width: 130px;
+      height: 100px;
+      object-fit: contain;
+      margin: 0 16px;
     }
 
     .clear {
@@ -88,7 +100,7 @@
 <body>
   <div class="header">
     <h2>Sales Tax Invoice</h2>
-    <img class="logo" src="data:image/png;base64,<%= logoBase64 %>" alt="Logo" />
+    <img class="logo" src="data:image/png;base64,<%= fbrLogoBase64 %>" alt="Company Logo" />
   </div>
 
   <div class="flex-row">
@@ -100,7 +112,7 @@
     </div>
   </div>
 
-  <div class="flex-row" >
+  <div class="flex-row">
     <div class="buyer-info">
       <p><strong>Buyer:</strong></p>
       <p><%= invoice.buyerBusinessName %></p>
@@ -117,38 +129,38 @@
     </div>
   </div>
 
-<table>
-  <thead>
-    <tr>
-      <th>SR No.</th>
-      <th>Description of goods</th>
-      <th>HS code</th>
-      <th>Quantity</th>
-      <th>Rate</th>
-      <th>Amount</th>
-      <th>ST Rate</th>
-      <th>Sales Tax</th>
-      <th>Further Tax</th>
-      <th>Net</th>
-    </tr>
-  </thead>
-  <tbody>
-    <% invoice.items.forEach((item, idx) => { %>
+  <table>
+    <thead>
       <tr>
-        <td><%= idx + 1 %></td>
-        <td><%= item.productDescription %></td>
-        <td><%= item.hsCode %></td>
-        <td><%= item.quantity %></td>
-        <td><%= item.fixedNotifiedValueOrRetailPrice %></td>
-        <td><%= (parseFloat(item.totalValues) || 0).toFixed(2) %></td>
-        <td><%= (parseFloat(item.rate) || 0).toFixed(2) %></td>
-        <td><%= (parseFloat(item.salesTaxApplicable) || 0).toFixed(2) %></td>
-        <td><%= (parseFloat(item.furtherTax) || 0).toFixed(2) %></td>
-        <td><%= ((parseFloat(item.totalValues) || 0) + (parseFloat(item.salesTaxApplicable) || 0) + (parseFloat(item.furtherTax) || 0)).toFixed(2) %></td>
+        <th>SR No.</th>
+        <th>Description of goods</th>
+        <th>HS code</th>
+        <th>Quantity</th>
+        <th>Rate</th>
+        <th>Amount</th>
+        <th>ST Rate</th>
+        <th>Sales Tax</th>
+        <th>Further Tax</th>
+        <th>Net</th>
       </tr>
-    <% }) %>
-  </tbody>
-</table>
+    </thead>
+    <tbody>
+      <% invoice.items.forEach((item, idx) => { %>
+        <tr>
+          <td><%= idx + 1 %></td>
+          <td><%= item.productDescription %></td>
+          <td><%= item.hsCode %></td>
+          <td><%= item.quantity %></td>
+          <td><%= item.fixedNotifiedValueOrRetailPrice %></td>
+          <td><%= (parseFloat(item.totalValues) || 0).toFixed(2) %></td>
+          <td><%= (parseFloat(item.rate) || 0).toFixed(2) %></td>
+          <td><%= (parseFloat(item.salesTaxApplicable) || 0).toFixed(2) %></td>
+          <td><%= (parseFloat(item.furtherTax) || 0).toFixed(2) %></td>
+          <td><%= ((parseFloat(item.totalValues) || 0) + (parseFloat(item.salesTaxApplicable) || 0) + (parseFloat(item.furtherTax) || 0)).toFixed(2) %></td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
 
   <% 
     const subTotal = invoice.items.reduce((sum, i) => sum + (i.totalValues || 0), 0);
@@ -168,8 +180,10 @@
     <p>Total in words: <%= convertToWords(grandTotal) %> Rupees Only</p>
   </div>
 
+  <!-- FBR logo on the left, QR code on the right -->
   <div class="qr-box">
-    <img src="<%= qrData %>" width="130" />
+    <img src="data:image/png;base64,<%= companyLogoBase64 %>" alt="FBR Logo" class="fbr-logo" />
+    <img src="<%= qrData %>" alt="QR Code" class="qr-image" />
   </div>
 
   <div class="clear"></div>
