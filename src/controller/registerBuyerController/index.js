@@ -4,21 +4,28 @@ import bcrypt from "bcryptjs";
 
 const registerBuyerController = {
 
-    registerUser: async (req, res) => {
-        try {
-            const data = req.body;
-            const existingUserResult = await buyerModel.find({buyerNTNCNIC:data.buyerNTNCNIC});
+registerUser: async (req, res) => {
+  try {
+    const data = req.body;
 
-            if (existingUserResult.user) {
-                return res.status(400).json({ message: "User already exists with this email" });
-            }
-        
-            const newUser = await buyerModel.create(data);
-            return res.status(201).json({ message: "User registered successfully", user: newUser });
-        } catch (error) {
-            return res.status(500).json({ message: "Server Error", error: error.message });
-        }
-    },
+    if (data.buyerNTNCNIC === '0000000000000') {
+      const newUser = await buyerModel.create(data);
+      return res.status(201).json({ message: "User registered successfully", user: newUser });
+    }
+
+    const existingUsers = await buyerModel.find({ buyerNTNCNIC: data.buyerNTNCNIC });
+
+    if (existingUsers.length > 0) {
+      return res.status(400).json({ message: "User already exists with this NTN/CNIC" });
+    }
+    const newUser = await buyerModel.create(data);
+    return res.status(201).json({ message: "User registered successfully", user: newUser });
+
+  } catch (error) {
+    return res.status(500).json({ message: "Server Error", error: error.message });
+  }
+},
+
 
     getAllUsers: async (req, res) => {
         try {
