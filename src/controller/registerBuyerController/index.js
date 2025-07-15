@@ -1,33 +1,28 @@
-import { Console } from "console";
-import userModel from "../../model/registerUser/index.js";
+import buyerModel from "../../model/registerUser/index.js";
 import findUserByEmail from "../../utils/findUserByEmail/index.js";
 import bcrypt from "bcryptjs";
 
-const registerUserController = {
+const registerBuyerController = {
 
     registerUser: async (req, res) => {
         try {
             const data = req.body;
-            const existingUserResult = await findUserByEmail(data.email);
-            console.log("existingUserResult", existingUserResult);
+            const existingUserResult = await buyerModel.find({buyerNTNCNIC:data.buyerNTNCNIC});
 
             if (existingUserResult.user) {
                 return res.status(400).json({ message: "User already exists with this email" });
             }
-            const hashPassword = await bcrypt.hash(data.password,10)
-            data.password=hashPassword
-
-            const newUser = await userModel.create(data);
+        
+            const newUser = await buyerModel.create(data);
             return res.status(201).json({ message: "User registered successfully", user: newUser });
         } catch (error) {
             return res.status(500).json({ message: "Server Error", error: error.message });
         }
     },
 
-
     getAllUsers: async (req, res) => {
         try {
-            const users = await userModel.find();
+            const users = await buyerModel.find();
             return res.status(200).json({ users });
         } catch (error) {
             return res.status(500).json({ message: "Server Error", error: error.message });
@@ -36,7 +31,7 @@ const registerUserController = {
 
     getUserById: async (req, res) => {
         try {
-            const user = await userModel.findById(req.params.id);
+            const user = await buyerModel.findById(req.params.id);
             if (!user) {
                 return res.status(404).json({ message: "User not found" });
             }
@@ -53,7 +48,7 @@ const registerUserController = {
                 const hashPassword= await bcrypt.hash(data.password,10)
                 data.password=hashPassword
             }
-            const updatedUser = await userModel.findByIdAndUpdate(req.params.id, data, { new: true });
+            const updatedUser = await buyerModel.findByIdAndUpdate(req.params.id, data, { new: true });
             if (!updatedUser) {
                 return res.status(404).json({ message: "User not found" });
             }
@@ -65,7 +60,7 @@ const registerUserController = {
 
     deleteUser: async (req, res) => {
         try {
-            const deletedUser = await userModel.findByIdAndDelete(req.params.id);
+            const deletedUser = await buyerModel.findByIdAndDelete(req.params.id);
             if (!deletedUser) {
                 return res.status(404).json({ message: "User not found" });
             }
@@ -77,4 +72,4 @@ const registerUserController = {
 
 };
 
-export default registerUserController;
+export default registerBuyerController;

@@ -13,7 +13,7 @@ const transporter = nodemailer.createTransport({
 
 const sendResetEmail = async (email, code) => {
   const mailOptions = {
-    from: `Vehicle Management System <${process.env.EMAIL}>`,
+    from: `Innovative Network <${process.env.EMAIL}>`,
     to: email,
     subject: 'Password Reset',
     text: `You requested a password reset. Your reset code is: ${code}`,

@@ -49,7 +49,11 @@ const invoiceController = {
       const companyLogoBase64 = fs.readFileSync(companyLogoPath).toString('base64');
       
       const qrUrl = `http://45.55.137.96:5150/invoices/${pdfFileName}`;
-      const qrData = await QRCode.toDataURL(qrUrl);
+const qrData = await QRCode.toDataURL(qrUrl, {
+  errorCorrectionLevel: 'M',
+  width: 96 // ~1 inch at 96 DPI
+});
+
 
       // Render HTML from EJS template
       const html = await ejs.renderFile(
