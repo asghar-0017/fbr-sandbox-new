@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
 import findUserByEmail from '../../utils/findUserByEmail/index.js';
 import Admin from '../../model/adminAuthModel/index.js';
+import userModel from "../../model/registerUser/index.js";
 
 
 
@@ -57,7 +58,7 @@ const authenticationService = {
   },
 
   validateResetCode: async (code) => {
-    const models = [Admin];
+    const models = [Admin,userModel];
     for (const model of models) {
       const user = await model.findOne({ verifyCode: code });
       if (user) {
@@ -71,7 +72,7 @@ const authenticationService = {
 
   updatePassword: async (newPassword, email) => {
     try {
-      const models = [Admin];
+      const models = [Admin,userModel];
       for (const model of models) {
         const user = await model.findOne({ email });
         if (user) {
@@ -103,7 +104,7 @@ const authenticationService = {
     }
     return false;
   }
-  
+
 };
 
 export default authenticationService;
