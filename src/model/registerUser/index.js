@@ -10,12 +10,14 @@ const buyerSchemaDefinition = new mongoose.Schema({
     buyerProvince: {
         type: String,
         required: true,
-        unique: true,
     },
     buyerAddress: {
         type: String,
-        required: true,
     },
+    buyerRegistrationType:{
+        type: String,
+        required: true,
+    }
 
 }, {
     timestamps: true,
