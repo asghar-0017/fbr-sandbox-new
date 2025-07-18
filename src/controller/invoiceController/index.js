@@ -105,6 +105,33 @@ const qrData = await QRCode.toDataURL(qrUrl, {
 
     }
   },
+//   getAllInvoicesdata: async (req, res) => {
+//   try {
+//     let { page = 1, limit = 10, search } = req.query;
+//     page = Math.max(Number(page), 1);
+//     limit = Math.max(Number(limit), 1);
+
+//     const query = {};
+  
+
+//     const total = await Invoice.countDocuments(query);
+//     const data = await Invoice.find(query)
+//       .sort({ invoiceDate: -1 })
+//       .skip((page - 1) * limit)
+//       .limit(limit);
+
+//     res.status(200).json({
+//       message: "Fetch data Successfully",
+//       data,
+//       total,
+//       page,
+//       limit,
+//       totalPages: Math.ceil(total / limit),
+//     });
+//   } catch (error) {
+//     res.status(500).json({ message: "Internal Server Error", error: error.message });
+//   }
+// },
   getinvoiceData:async(req,res)=>{
     try{
         const invoiceId=req.params.id

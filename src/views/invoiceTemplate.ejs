@@ -75,6 +75,8 @@
       font-weight: bold;
       font-size: 12px;
       clear: both;
+      white-space: pre-wrap;
+      /* Enable wrapping for long text */
     }
 
     .qr-box {
@@ -113,12 +115,12 @@
 
   <div class="flex-row">
     <div class="invoice-info">
-      <p><span class="invoice-label">Invoice #:</span>
+      <p><strong>Invoice #:</strong>
         <%= invoice.invoiceNumber %>
       </p>
     </div>
     <div class="invoice-info">
-      <p><span class="invoice-label">Date:</span>
+      <p><strong>Date:</strong>
         <%= invoice.invoiceDate %>
       </p>
     </div>
@@ -133,11 +135,11 @@
       <p>
         <%= invoice.buyerAddress %>
       </p>
-      <p>REGION : <%= invoice.buyerProvince %>
+      <p>REGION: <%= invoice.buyerProvince %>
       </p>
-      <p>NTN : <%= invoice.buyerNTNCNIC %>
+      <p>NTN: <%= invoice.buyerNTNCNIC %>
       </p>
-      <p>TYPE : <%= invoice.buyerRegistrationType %>
+      <p>TYPE: <%= invoice.buyerRegistrationType %>
       </p>
     </div>
     <div class="seller-info">
@@ -148,7 +150,7 @@
       <p>
         <%= invoice.sellerAddress %>
       </p>
-      <p>NTN : <%= invoice.sellerNTNCNIC %>
+      <p>NTN: <%= invoice.sellerNTNCNIC %>
       </p>
     </div>
   </div>
@@ -157,15 +159,17 @@
     <thead>
       <tr>
         <th>SR No.</th>
-        <th>Description of goods</th>
-        <th>HS code</th>
+        <th>Description of Goods</th>
+        <th>HS Code</th>
         <th>Quantity</th>
         <th>Rate</th>
         <th>Amount</th>
-        <th>ST Rate</th>
         <th>Sales Tax</th>
+        <th>Extra Tax</th>
         <th>Further Tax</th>
-        <th>Net</th>
+        <th>FED</th>
+        <th>discount</th>
+        <th>Total (incl. Tax)</th>
       </tr>
     </thead>
     <tbody>
@@ -184,55 +188,69 @@
             <%= item.quantity %>
           </td>
           <td>
-            <%= item.fixedNotifiedValueOrRetailPrice %>
+            <%= item.rate %>
           </td>
           <td>
-            <%= (parseFloat(item.totalValues) || 0).toFixed(2) %>
-          </td>
-          <td>
-            <%= (parseFloat(item.rate) || 0).toFixed(2) %>
+            <%= (parseFloat(item.valueSalesExcludingST) || 0).toFixed(2) %>
           </td>
           <td>
             <%= (parseFloat(item.salesTaxApplicable) || 0).toFixed(2) %>
           </td>
           <td>
+            <%= (parseFloat(item.extraTax) || 0).toFixed(2) %>
+          </td>
+          <td>
             <%= (parseFloat(item.furtherTax) || 0).toFixed(2) %>
           </td>
           <td>
-            <%= ((parseFloat(item.totalValues) || 0) + (parseFloat(item.salesTaxApplicable) || 0) +
-              (parseFloat(item.furtherTax) || 0)).toFixed(2) %>
+            <%= (parseFloat(item.fedPayable) || 0).toFixed(2) %>
           </td>
+          <td>
+            <%= (parseFloat(item.discount) || 0).toFixed(2) %>
+          </td>
+          <td>
+            <%= (parseFloat(item.totalValues) || 0).toFixed(2) %>
+          </td> <!-- Just use totalValues -->
+
         </tr>
-        <% }) %>
+        <% }); %>
     </tbody>
   </table>
 
-  <% const subTotal=invoice.items.reduce((sum, i)=> sum + (i.totalValues || 0), 0);
-    const gst = invoice.items.reduce((sum, i) => sum + (i.salesTaxApplicable || 0), 0);
-    const further = invoice.items.reduce((sum, i) => sum + (i.furtherTax || 0), 0);
-    const grandTotal = subTotal + gst + further;
+  <% const subTotal=invoice.items.reduce((sum, i)=> sum + parseFloat(i.valueSalesExcludingST || 0), 0);
+    const gst = invoice.items.reduce((sum, i) => sum + parseFloat(i.salesTaxApplicable || 0), 0);
+    const further = invoice.items.reduce((sum, i) => sum + parseFloat(i.furtherTax || 0), 0);
+    const extra = invoice.items.reduce((sum, i) => sum + parseFloat(i.extraTax || 0), 0);
+    const fed = invoice.items.reduce((sum, i) => sum + parseFloat(i.fedPayable || 0), 0);
+    const dis = invoice.items.reduce((sum, i) => sum + parseFloat(i.discount || 0), 0);
+  const grandTotal = invoice.items.reduce((sum, i) => sum + parseFloat(i.totalValues || 0), 0);
     %>
 
     <div class="summary-box">
-      <p>Sub Total: <%= subTotal.toFixed(2) %>
+      <p>Sub Total (Excl. Tax): <%= subTotal.toFixed(2) %>
       </p>
-      <p>GST: <%= gst.toFixed(2) %>
+      <p>Sales Tax (GST): <%= gst.toFixed(2) %>
       </p>
       <p>Further Tax: <%= further.toFixed(2) %>
       </p>
-      <p><strong>Total: RS. <%= grandTotal.toFixed(2) %></strong></p>
+      <p>Extra Tax: <%= extra.toFixed(2) %>
+      </p>
+      <p>fedPayable: <%= fed.toFixed(2) %>
+      </p>
+      <p>Discount: <%= dis.toFixed(2) %>
+      </p>
+      <p><strong>Grand Total (Incl. All Taxes): RS. <%= grandTotal.toFixed(2) %></strong></p>
     </div>
 
-    <div class="total-in-words" style="display: flex; position: relative; bottom: 70px;">
-      <p>Total in words: <%= convertToWords(grandTotal) %> Rupees Only</p>
-    </div>
+   <div class="total-in-words" style="position: relative; bottom: 140px;">
+  <p>Total in words:<br/> <%= convertToWords(grandTotal) %> Rupees Only</p>
+</div>
 
-    <!-- FBR logo on the left, QR code on the right -->
-    <div class="qr-box" style="position: relative; bottom: 4rem;">
+
+    <div class="qr-box" style="position: relative; bottom: 7rem;">
       <img src="data:image/png;base64,<%= companyLogoBase64 %>" alt="FBR Logo" class="fbr-logo" />
       <img src="<%= qrData %>" alt="QR Code" class="qr-image" />
     </div>
-
 
     <div class="clear"></div>
 </body>

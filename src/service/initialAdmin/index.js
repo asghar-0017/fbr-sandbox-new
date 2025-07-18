@@ -14,7 +14,7 @@ const initializeAdmin = async () => {
     const admin = await Auth.findOne({ email: process.env.ADMIN_EMAIL });
 
     if (!admin) {
-      const hashedPassword = await bcrypt.hash('admin', 10);
+      const hashedPassword = await bcrypt.hash('invoice@321', 10);
 
       const newAdmin = new Auth({
         password: hashedPassword,
