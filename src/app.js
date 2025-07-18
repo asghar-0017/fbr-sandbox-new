@@ -40,7 +40,7 @@ const startServer = async () => {
   try {
     connectDb(config.db, logger);
     console.log("Connected to database");
-    const port = process.env.PORT || 5000;
+    const port = process.env.PORT || 5173;
     app.listen(port, () => {
       console.log('Server is running on port', port);
     });
