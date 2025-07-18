@@ -4,7 +4,7 @@ import config from './config/index.js';
 import connectDb from './dbConnector/index.js';
 import helmet from "helmet";
 import cors from "cors";
-// import allRoutes from './routes/allRoutes/index.js';
+import allRoutes from './routes/allRoutes/index.js';
 import path from 'path';
 import fs from 'fs';
 import os from 'os';
@@ -40,7 +40,7 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
 
-// allRoutes(app);
+allRoutes(app);
 
 export const logger = {
   info: (msg) => console.log(`INFO: ${msg}`),
