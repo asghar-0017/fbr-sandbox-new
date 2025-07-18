@@ -4,14 +4,25 @@ import config from './config/index.js';
 import connectDb from './dbConnector/index.js';
 import helmet from "helmet";
 import cors from "cors";
-import allRoutes from './routes/allRoutes/index.js';
+// import allRoutes from './routes/allRoutes/index.js';
 import path from 'path';
+import fs from 'fs';
+import os from 'os';
+
 dotenv.config();
 
 const app = express();
 
 
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
 
+app.use(express.urlencoded({ extended: false }))
+app.use(express.static('public'));
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+app.use(express.static(path.join(__dirname, 'dist')));
 
 app.use(express.json());
 app.use(helmet());
@@ -20,16 +31,16 @@ app.use(cors({
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
+
+app.use(express.static(path.join(__dirname, 'public')));
 app.use('/invoices', express.static(path.join(process.cwd(), 'public/invoices')));
+app.use(express.static(path.join(__dirname, 'dist')));
 
 app.get('/', (req, res) => {
-  res.status(200).json({
-    code: "200",
-    message: "Maclap Server is Running"
-  });
+  res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
 
-allRoutes(app);
+// allRoutes(app);
 
 export const logger = {
   info: (msg) => console.log(`INFO: ${msg}`),
