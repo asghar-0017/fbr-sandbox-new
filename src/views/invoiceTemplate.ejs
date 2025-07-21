@@ -8,7 +8,7 @@
     body {
       font-family: Arial, sans-serif;
       font-size: 12px;
-      margin: 40px;
+      margin: 20px;
       color: #000;
     }
 
@@ -53,6 +53,7 @@
       background-color: #2c7c93;
       color: white;
       font-weight: bold;
+
     }
 
     .summary-box {
@@ -63,6 +64,7 @@
       padding: 12px;
       border: 1px solid #ccc;
       text-align: right;
+      margin-left: 40px;
     }
 
     .summary-box p {
@@ -162,13 +164,15 @@
         <th>Description of Goods</th>
         <th>HS Code</th>
         <th>Quantity</th>
-        <th>Rate</th>
+        <th>Unit Price</th>
         <th>Amount</th>
+        <th>Rate</th>
         <th>Sales Tax</th>
         <th>Extra Tax</th>
         <th>Further Tax</th>
         <th>FED</th>
-        <th>discount</th>
+        <th>Discount (%)</th>
+        <th>Sales Tax Withheld</th>
         <th>Total (incl. Tax)</th>
       </tr>
     </thead>
@@ -188,10 +192,13 @@
             <%= item.quantity %>
           </td>
           <td>
-            <%= item.rate %>
+            <%= item.unitPrice %>
           </td>
           <td>
             <%= (parseFloat(item.valueSalesExcludingST) || 0).toFixed(2) %>
+          </td>
+          <td>
+            <%= item.rate %>
           </td>
           <td>
             <%= (parseFloat(item.salesTaxApplicable) || 0).toFixed(2) %>
@@ -209,6 +216,9 @@
             <%= (parseFloat(item.discount) || 0).toFixed(2) %>
           </td>
           <td>
+            <%= (parseFloat(item.salesTaxWithheldAtSource) || 0).toFixed(2) %>
+          </td>
+          <td>
             <%= (parseFloat(item.totalValues) || 0).toFixed(2) %>
           </td> <!-- Just use totalValues -->
 
@@ -223,6 +233,7 @@
     const extra = invoice.items.reduce((sum, i) => sum + parseFloat(i.extraTax || 0), 0);
     const fed = invoice.items.reduce((sum, i) => sum + parseFloat(i.fedPayable || 0), 0);
     const dis = invoice.items.reduce((sum, i) => sum + parseFloat(i.discount || 0), 0);
+    const withheld = invoice.items.reduce((sum, i) => sum + parseFloat(i.salesTaxWithheldAtSource || 0), 0);
   const grandTotal = invoice.items.reduce((sum, i) => sum + parseFloat(i.totalValues || 0), 0);
     %>
 
@@ -239,6 +250,8 @@
       </p>
       <p>Discount: <%= dis.toFixed(2) %>
       </p>
+      <p>Sales Tax Withheld: <%= withheld.toFixed(2) %>
+      </p>
       <p><strong>Grand Total (Incl. All Taxes): RS. <%= grandTotal.toFixed(2) %></strong></p>
     </div>
 
@@ -247,7 +260,7 @@
 </div>
 
 
-    <div class="qr-box" style="position: relative; bottom: 7rem;">
+    <div class="qr-box" style="position: relative; bottom: 7.5rem;">
       <img src="data:image/png;base64,<%= companyLogoBase64 %>" alt="FBR Logo" class="fbr-logo" />
       <img src="<%= qrData %>" alt="QR Code" class="qr-image" />
     </div>

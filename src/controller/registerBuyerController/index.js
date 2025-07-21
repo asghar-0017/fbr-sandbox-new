@@ -51,10 +51,6 @@ registerUser: async (req, res) => {
     updateUser: async (req, res) => {
         try {
             const data=req.body
-            if(data.password){
-                const hashPassword= await bcrypt.hash(data.password,10)
-                data.password=hashPassword
-            }
             const updatedUser = await buyerModel.findByIdAndUpdate(req.params.id, data, { new: true });
             if (!updatedUser) {
                 return res.status(404).json({ message: "User not found" });

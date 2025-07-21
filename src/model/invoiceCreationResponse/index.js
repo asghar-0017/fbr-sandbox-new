@@ -23,6 +23,7 @@ const invoiceResponseSchema = new mongoose.Schema({
       rate: { type: String },
       uoM: { type: String },
       quantity: { type: Number },
+      unitPrice: { type: Number },
       totalValues: { type: Number },
       valueSalesExcludingST: { type: Number },
       fixedNotifiedValueOrRetailPrice: { type: Number },

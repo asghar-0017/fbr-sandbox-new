@@ -48,7 +48,7 @@ const invoiceController = {
       const companyLogoPath = path.join(process.cwd(), 'public', 'fbr-logo-1.png');
       const companyLogoBase64 = fs.readFileSync(companyLogoPath).toString('base64');
       
-      const qrUrl = `https://einvoice.inplsoftwares.online/invoices/${pdfFileName}`;
+      const qrUrl = `http://localhost:5173/invoices/${pdfFileName}`;
 const qrData = await QRCode.toDataURL(qrUrl, {
   errorCorrectionLevel: 'M',
   width: 96 // ~1 inch at 96 DPI
