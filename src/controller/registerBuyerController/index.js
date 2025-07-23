@@ -51,7 +51,12 @@ registerUser: async (req, res) => {
     updateUser: async (req, res) => {
         try {
             const data=req.body
+            const isNtnAlreadyExists=await buyerModel.findOne({buyerNTNCNIC:data.buyerNTNCNIC})
+            if(isNtnAlreadyExists){
+                return res.status(400).json({ message: "NTN/CNIC already exists" });
+            }
             const updatedUser = await buyerModel.findByIdAndUpdate(req.params.id, data, { new: true });
+        
             if (!updatedUser) {
                 return res.status(404).json({ message: "User not found" });
             }
