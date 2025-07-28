@@ -1,21 +1,26 @@
 import express from 'express';
 import dotenv from 'dotenv';
-import config from './config/index.js';
-import connectDb from './dbConnector/index.js';
 import helmet from "helmet";
 import cors from "cors";
-import allRoutes from './routes/allRoutes/index.js';
 import path from 'path';
 import fs from 'fs';
 import os from 'os';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+
+// Import MySQL connector instead of MongoDB
+import mysqlConnector from './dbConnector/mysqlConnector.js';
+
+// Import new MySQL routes
+import authRoutes from './routes/authRoutes.js';
+
+import tenantRoutes from './routes/tenantRoutes.js';
+// import buyerRoutes from './routes/mysql/buyerRoutes.js';
+import invoiceRoutes from './routes/invoiceRoutes.js';
 
 dotenv.config();
 
 const app = express();
-
-
-import { fileURLToPath } from 'url';
-import { dirname } from 'path';
 
 app.use(express.urlencoded({ extended: false }))
 app.use(express.static('public'));
@@ -29,7 +34,7 @@ app.use(helmet());
 app.use(cors({
   origin: '*',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Tenant-ID'],
 }));
 
 app.use(express.static(path.join(__dirname, 'public')));
@@ -40,7 +45,11 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
 
-allRoutes(app);
+// MySQL Routes
+app.use('/api/auth', authRoutes);
+app.use('/api/admin', tenantRoutes);
+// app.use('/api/tenant/:tenantId/buyers', buyerRoutes);
+app.use('/api/tenant/:tenantId', invoiceRoutes);
 
 export const logger = {
   info: (msg) => console.log(`INFO: ${msg}`),
@@ -49,14 +58,20 @@ export const logger = {
 
 const startServer = async () => {
   try {
-    connectDb(config.db, logger);
-    console.log("Connected to database");
+    // Initialize MySQL instead of MongoDB
+    await mysqlConnector({}, logger);
+    console.log("✅ Connected to MySQL multi-tenant database system");
+    
     const port = process.env.PORT || 5173;
     app.listen(port, () => {
-      console.log('Server is running on port', port);
+      console.log('🚀 Server is running on port', port);
+      console.log('📋 MySQL Multi-Tenant System Ready!');
+      console.log('🔗 API Endpoints:');
+     
     });
   } catch (error) {
-    console.log("Error starting server", error);
+    console.log("❌ Error starting server", error);
+    process.exit(1);
   }
 };
 

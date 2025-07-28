@@ -2,11 +2,12 @@ import dotenv from 'dotenv'
 dotenv.config()
 
 const config = {
-    db:{
-        baseUrl: process.env.DB_BASE_URL,
-        user: process.env.DB_USER,
-        password: process.env.DB_PASSWORD,
-        dbName: process.env.DB_NAME
+    mysql: {
+        host: process.env.MYSQL_HOST || 'localhost',
+        port: process.env.MYSQL_PORT || 3306,
+        username: process.env.MYSQL_USER || 'root',
+        password: process.env.MYSQL_PASSWORD || '',
+        database: process.env.MYSQL_MASTER_DB || 'fbr_master'
     }
 }
 
