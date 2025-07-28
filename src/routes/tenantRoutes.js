@@ -12,6 +12,7 @@ router.use(requireAdmin);
 router.post('/tenants', tenantController.createTenant);
 router.get('/tenants', tenantController.getAllTenants);
 router.get('/tenants/:tenantId', tenantController.getTenantById);
+router.get('/tenants/:tenantId/stats', tenantController.getTenantStats);
 router.put('/tenants/:tenantId', tenantController.updateTenant);
 router.delete('/tenants/:tenantId', tenantController.deactivateTenant);
 

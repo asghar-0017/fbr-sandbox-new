@@ -15,19 +15,23 @@ const Tenant = masterSequelize.define('Tenant', {
   seller_ntn_cnic: {
     type: DataTypes.STRING(50),
     allowNull: false,
-    unique: true
+    unique: true,
+    field: 'seller_ntn_cnic'
   },
   seller_business_name: {
     type: DataTypes.STRING(255),
-    allowNull: false
+    allowNull: false,
+    field: 'seller_business_name'
   },
   seller_province: {
     type: DataTypes.STRING(100),
-    allowNull: true
+    allowNull: true,
+    field: 'seller_province'
   },
   seller_address: {
     type: DataTypes.TEXT,
-    allowNull: true
+    allowNull: true,
+    field: 'seller_address'
   },
   database_name: {
     type: DataTypes.STRING(100),

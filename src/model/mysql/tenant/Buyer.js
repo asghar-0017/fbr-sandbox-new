@@ -8,25 +8,39 @@ export const createBuyerModel = (sequelize) => {
       primaryKey: true,
       autoIncrement: true
     },
-    buyer_ntn_cnic: {
+    buyerNTNCNIC: {
       type: DataTypes.STRING(50),
-      allowNull: true
+      allowNull: true,
+      validate: {
+        len: [0, 50]
+      }
     },
-    buyer_business_name: {
+    buyerBusinessName: {
       type: DataTypes.STRING(255),
-      allowNull: true
+      allowNull: true,
+      validate: {
+        len: [0, 255]
+      }
     },
-    buyer_province: {
+    buyerProvince: {
       type: DataTypes.STRING(100),
-      allowNull: false
+      allowNull: false,
+      validate: {
+        notEmpty: true,
+        len: [1, 100]
+      }
     },
-    buyer_address: {
+    buyerAddress: {
       type: DataTypes.TEXT,
       allowNull: true
     },
-    buyer_registration_type: {
+    buyerRegistrationType: {
       type: DataTypes.STRING(100),
-      allowNull: false
+      allowNull: false,
+      validate: {
+        notEmpty: true,
+        len: [1, 100]
+      }
     }
   }, {
     tableName: 'buyers',

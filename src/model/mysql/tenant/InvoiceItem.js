@@ -16,11 +16,11 @@ export const createInvoiceItemModel = (sequelize) => {
         key: 'id'
       }
     },
-    hs_code: {
+    hsCode: {
       type: DataTypes.STRING(50),
       allowNull: true
     },
-    product_description: {
+    productDescription: {
       type: DataTypes.TEXT,
       allowNull: true
     },
@@ -28,7 +28,7 @@ export const createInvoiceItemModel = (sequelize) => {
       type: DataTypes.STRING(50),
       allowNull: true
     },
-    uom: {
+    uoM: {
       type: DataTypes.STRING(50),
       allowNull: true
     },
@@ -36,43 +36,39 @@ export const createInvoiceItemModel = (sequelize) => {
       type: DataTypes.DECIMAL(10, 2),
       allowNull: true
     },
-    unit_price: {
+    totalValues: {
       type: DataTypes.DECIMAL(10, 2),
       allowNull: true
     },
-    total_values: {
+    valueSalesExcludingST: {
       type: DataTypes.DECIMAL(10, 2),
       allowNull: true
     },
-    value_sales_excluding_st: {
+    fixedNotifiedValueOrRetailPrice: {
       type: DataTypes.DECIMAL(10, 2),
       allowNull: true
     },
-    fixed_notified_value_or_retail_price: {
+    salesTaxApplicable: {
       type: DataTypes.DECIMAL(10, 2),
       allowNull: true
     },
-    sales_tax_applicable: {
+    salesTaxWithheldAtSource: {
       type: DataTypes.DECIMAL(10, 2),
       allowNull: true
     },
-    sales_tax_withheld_at_source: {
-      type: DataTypes.DECIMAL(10, 2),
-      allowNull: true
-    },
-    extra_tax: {
+    extraTax: {
       type: DataTypes.STRING(50),
       allowNull: true
     },
-    further_tax: {
+    furtherTax: {
       type: DataTypes.DECIMAL(10, 2),
       allowNull: true
     },
-    sro_schedule_no: {
+    sroScheduleNo: {
       type: DataTypes.STRING(50),
       allowNull: true
     },
-    fed_payable: {
+    fedPayable: {
       type: DataTypes.DECIMAL(10, 2),
       allowNull: true
     },
@@ -80,11 +76,11 @@ export const createInvoiceItemModel = (sequelize) => {
       type: DataTypes.DECIMAL(10, 2),
       allowNull: true
     },
-    sale_type: {
+    saleType: {
       type: DataTypes.STRING(50),
       allowNull: true
     },
-    sro_item_serial_no: {
+    sroItemSerialNo: {
       type: DataTypes.STRING(50),
       allowNull: true
     }

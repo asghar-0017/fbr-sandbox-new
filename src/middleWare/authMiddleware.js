@@ -13,30 +13,47 @@ export const authenticateToken = async (req, res, next) => {
       });
     }
 
-    // Verify token exists in session
-    const session = await AdminSession.findOne({
-      where: { token }
-    });
-
-    if (!session) {
-      return res.status(401).json({
+    // Verify JWT token first
+    let decoded;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+    } catch (err) {
+      return res.status(403).json({
         success: false,
-        message: 'Invalid or expired token'
+        message: 'Invalid token'
       });
     }
 
-    // Verify JWT token
-    jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key', (err, user) => {
-      if (err) {
-        return res.status(403).json({
+    // Check if it's a tenant token
+    if (decoded.type === 'tenant') {
+      req.user = decoded;
+      req.userType = 'tenant';
+      next();
+      return;
+    }
+
+    // For admin tokens, verify session exists
+    try {
+      const session = await AdminSession.findOne({
+        where: { token }
+      });
+      
+      if (!session) {
+        return res.status(401).json({
           success: false,
-          message: 'Invalid token'
+          message: 'Invalid or expired token'
         });
       }
-
-      req.user = user;
+      req.user = decoded;
+      req.userType = 'admin';
       next();
-    });
+    } catch (error) {
+      console.error('Error checking admin session:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Authentication error'
+      });
+    }
   } catch (error) {
     console.error('Error in authentication middleware:', error);
     return res.status(500).json({

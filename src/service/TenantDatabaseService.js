@@ -14,7 +14,7 @@ class TenantDatabaseService {
   // Create a new tenant database
   async createTenantDatabase(tenantData) {
     try {
-      const { seller_ntn_cnic, seller_business_name, seller_province, seller_address, databaseName } = tenantData;
+      const { sellerNTNCNIC, sellerBusinessName, sellerProvince, sellerAddress, databaseName } = tenantData;
       console.log(tenantData);  
       
       // Generate unique tenant ID
@@ -38,10 +38,10 @@ class TenantDatabaseService {
       // Create tenant record in master database
       const tenant = await Tenant.create({
         tenant_id: tenantId,
-        seller_ntn_cnic,
-        seller_business_name,
-        seller_province,
-        seller_address,
+        seller_ntn_cnic: sellerNTNCNIC,
+        seller_business_name: sellerBusinessName,
+        seller_province: sellerProvince,
+        seller_address: sellerAddress,
         database_name: databaseName,
         is_active: true
       });
@@ -96,6 +96,8 @@ class TenantDatabaseService {
   // Get tenant database connection and models
   async getTenantDatabase(tenantId) {
     try {
+  
+      
       // Find tenant in master database
       const tenant = await Tenant.findOne({
         where: { 
@@ -122,6 +124,13 @@ class TenantDatabaseService {
       // Create new connection
       const sequelize = createTenantConnection(databaseName);
       
+      // Test the connection
+      try {
+        await sequelize.authenticate();
+      } catch (error) {
+        throw new Error(`Failed to connect to tenant database: ${error.message}`);
+      }
+      
       // Create models
       const Buyer = createBuyerModel(sequelize);
       const Invoice = createInvoiceModel(sequelize);
@@ -138,6 +147,8 @@ class TenantDatabaseService {
         Invoice,
         InvoiceItem
       });
+
+
 
       return {
         tenant,
@@ -181,12 +192,46 @@ class TenantDatabaseService {
     try {
       const tenants = await Tenant.findAll({
         where: { is_active: true },
-        attributes: ['id', 'tenant_id', 'seller_ntn_cnic', 'seller_business_name', 'seller_province', 'database_name', 'created_at']
+        attributes: ['id', 'tenant_id', 'seller_ntn_cnic', 'seller_business_name', 'seller_province', 'seller_address', 'is_active', 'database_name', 'created_at']
       });
 
-      return tenants;
+      // Map the underscore fields to camelCase for frontend compatibility
+      const mappedTenants = tenants.map(tenant => ({
+        id: tenant.id,
+        tenant_id: tenant.tenant_id,
+        sellerNTNCNIC: tenant.seller_ntn_cnic,
+        sellerBusinessName: tenant.seller_business_name,
+        sellerProvince: tenant.seller_province,
+        sellerAddress: tenant.seller_address,
+        is_active: tenant.is_active,
+        database_name: tenant.database_name,
+        created_at: tenant.created_at
+      }));
+
+      return mappedTenants;
     } catch (error) {
       console.error('Error getting all tenants:', error);
+      throw error;
+    }
+  }
+
+  // Get tenant by seller NTN/CNIC
+  async getTenantBySellerId(sellerNtnCnic) {
+    try {
+      const tenant = await Tenant.findOne({
+        where: { 
+          seller_ntn_cnic: sellerNtnCnic,
+          is_active: true 
+        }
+      });
+
+      if (!tenant) {
+        throw new Error('Tenant not found or inactive');
+      }
+
+      return tenant;
+    } catch (error) {
+      console.error('Error getting tenant by seller ID:', error);
       throw error;
     }
   }

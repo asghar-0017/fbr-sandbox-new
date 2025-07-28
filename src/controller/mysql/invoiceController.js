@@ -6,10 +6,10 @@ export const createInvoice = async (req, res) => {
   try {
     const { Invoice, InvoiceItem } = req.tenantModels;
     const { 
-      invoice_number, invoice_type, invoice_date,
-      seller_ntn_cnic, seller_business_name, seller_province, seller_address,
-      buyer_ntn_cnic, buyer_business_name, buyer_province, buyer_address, buyer_registration_type,
-      invoice_ref_no, scenario_id, items 
+      invoice_number, invoiceType, invoiceDate,
+      sellerNTNCNIC, sellerBusinessName, sellerProvince, sellerAddress,
+      buyerNTNCNIC, buyerBusinessName, buyerProvince, buyerAddress, buyerRegistrationType,
+      invoiceRefNo, scenario_id, items 
     } = req.body;
 
     // Debug: Log the received items data
@@ -40,18 +40,18 @@ export const createInvoice = async (req, res) => {
       // Create invoice
       const invoice = await Invoice.create({
         invoice_number,
-        invoice_type,
-        invoice_date,
-        seller_ntn_cnic,
-        seller_business_name,
-        seller_province,
-        seller_address,
-        buyer_ntn_cnic,
-        buyer_business_name,
-        buyer_province,
-        buyer_address,
-        buyer_registration_type,
-        invoice_ref_no,
+        invoiceType,
+        invoiceDate,
+        sellerNTNCNIC,
+        sellerBusinessName,
+        sellerProvince,
+        sellerAddress,
+        buyerNTNCNIC,
+        buyerBusinessName,
+        buyerProvince,
+        buyerAddress,
+        buyerRegistrationType,
+        invoiceRefNo,
         scenario_id
       }, { transaction: t });
 
@@ -76,24 +76,23 @@ export const createInvoice = async (req, res) => {
 
           const mappedItem = {
             invoice_id: invoice.id,
-            hs_code: cleanValue(item.hsCode),
-            product_description: cleanValue(item.productDescription),
+            hsCode: cleanValue(item.hsCode),
+            productDescription: cleanValue(item.productDescription),
             rate: cleanValue(item.rate),
-            uom: cleanValue(item.uoM),
+            uoM: cleanValue(item.uoM),
             quantity: cleanNumericValue(item.quantity),
-            unit_price: cleanNumericValue(item.unitPrice),
-            total_values: cleanNumericValue(item.totalValues),
-            value_sales_excluding_st: cleanNumericValue(item.valueSalesExcludingST),
-            fixed_notified_value_or_retail_price: cleanNumericValue(item.fixedNotifiedValueOrRetailPrice),
-            sales_tax_applicable: cleanNumericValue(item.salesTaxApplicable),
-            sales_tax_withheld_at_source: cleanNumericValue(item.salesTaxWithheldAtSource),
-            extra_tax: cleanValue(item.extraTax),
-            further_tax: cleanNumericValue(item.furtherTax),
-            sro_schedule_no: cleanValue(item.sroScheduleNo),
-            fed_payable: cleanNumericValue(item.fedPayable),
+            totalValues: cleanNumericValue(item.totalValues),
+            valueSalesExcludingST: cleanNumericValue(item.valueSalesExcludingST),
+            fixedNotifiedValueOrRetailPrice: cleanNumericValue(item.fixedNotifiedValueOrRetailPrice),
+            salesTaxApplicable: cleanNumericValue(item.salesTaxApplicable),
+            salesTaxWithheldAtSource: cleanNumericValue(item.salesTaxWithheldAtSource),
+            extraTax: cleanValue(item.extraTax),
+            furtherTax: cleanNumericValue(item.furtherTax),
+            sroScheduleNo: cleanValue(item.sroScheduleNo),
+            fedPayable: cleanNumericValue(item.fedPayable),
             discount: cleanNumericValue(item.discount),
-            sale_type: cleanValue(item.saleType),
-            sro_item_serial_no: cleanValue(item.sroItemSerialNo)
+            saleType: cleanValue(item.saleType),
+            sroItemSerialNo: cleanValue(item.sroItemSerialNo)
           };
           
           // Debug: Log the mapped item
@@ -130,7 +129,7 @@ export const createInvoice = async (req, res) => {
 // Get all invoices
 export const getAllInvoices = async (req, res) => {
   try {
-    const { Invoice } = req.tenantModels;
+    const { Invoice, InvoiceItem } = req.tenantModels;
     const { page = 1, limit = 10, search, start_date, end_date } = req.query;
 
     const offset = (page - 1) * limit;
@@ -140,8 +139,8 @@ export const getAllInvoices = async (req, res) => {
     if (search) {
       whereClause[req.tenantDb.Sequelize.Op.or] = [
         { invoice_number: { [req.tenantDb.Sequelize.Op.like]: `%${search}%` } },
-        { buyer_business_name: { [req.tenantDb.Sequelize.Op.like]: `%${search}%` } },
-        { seller_business_name: { [req.tenantDb.Sequelize.Op.like]: `%${search}%` } }
+        { buyerBusinessName: { [req.tenantDb.Sequelize.Op.like]: `%${search}%` } },
+        { sellerBusinessName: { [req.tenantDb.Sequelize.Op.like]: `%${search}%` } }
       ];
     }
 
@@ -154,15 +153,44 @@ export const getAllInvoices = async (req, res) => {
 
     const { count, rows } = await Invoice.findAndCountAll({
       where: whereClause,
+      include: [{
+        model: InvoiceItem,
+        as: 'InvoiceItems'
+      }],
       limit: parseInt(limit),
       offset: parseInt(offset),
       order: [['created_at', 'DESC']]
     });
 
+    // Transform the data to match frontend expectations
+    const transformedInvoices = rows.map(invoice => {
+      const plainInvoice = invoice.get({ plain: true });
+      return {
+        id: plainInvoice.id,
+        invoiceNumber: plainInvoice.invoice_number,
+        invoiceType: plainInvoice.invoiceType,
+        invoiceDate: plainInvoice.invoiceDate,
+        sellerNTNCNIC: plainInvoice.sellerNTNCNIC,
+        sellerBusinessName: plainInvoice.sellerBusinessName,
+        sellerProvince: plainInvoice.sellerProvince,
+        sellerAddress: plainInvoice.sellerAddress,
+        buyerNTNCNIC: plainInvoice.buyerNTNCNIC,
+        buyerBusinessName: plainInvoice.buyerBusinessName,
+        buyerProvince: plainInvoice.buyerProvince,
+        buyerAddress: plainInvoice.buyerAddress,
+        buyerRegistrationType: plainInvoice.buyerRegistrationType,
+        invoiceRefNo: plainInvoice.invoiceRefNo,
+        scenarioId: plainInvoice.scenario_id,
+        items: plainInvoice.InvoiceItems || [],
+        created_at: plainInvoice.created_at,
+        updated_at: plainInvoice.updated_at
+      };
+    });
+
     res.status(200).json({
       success: true,
       data: {
-        invoices: rows,
+        invoices: transformedInvoices,
         pagination: {
           current_page: parseInt(page),
           total_pages: Math.ceil(count / limit),
@@ -201,9 +229,32 @@ export const getInvoiceById = async (req, res) => {
       });
     }
 
+    // Transform the data to match frontend expectations
+    const plainInvoice = invoice.get({ plain: true });
+    const transformedInvoice = {
+      id: plainInvoice.id,
+      invoiceNumber: plainInvoice.invoice_number,
+      invoiceType: plainInvoice.invoiceType,
+      invoiceDate: plainInvoice.invoiceDate,
+      sellerNTNCNIC: plainInvoice.sellerNTNCNIC,
+      sellerBusinessName: plainInvoice.sellerBusinessName,
+      sellerProvince: plainInvoice.sellerProvince,
+      sellerAddress: plainInvoice.sellerAddress,
+      buyerNTNCNIC: plainInvoice.buyerNTNCNIC,
+      buyerBusinessName: plainInvoice.buyerBusinessName,
+      buyerProvince: plainInvoice.buyerProvince,
+      buyerAddress: plainInvoice.buyerAddress,
+      buyerRegistrationType: plainInvoice.buyerRegistrationType,
+      invoiceRefNo: plainInvoice.invoiceRefNo,
+      scenarioId: plainInvoice.scenario_id,
+      items: plainInvoice.InvoiceItems || [],
+      created_at: plainInvoice.created_at,
+      updated_at: plainInvoice.updated_at
+    };
+
     res.status(200).json({
       success: true,
-      data: invoice
+      data: transformedInvoice
     });
   } catch (error) {
     console.error('Error getting invoice:', error);
@@ -245,6 +296,101 @@ export const getInvoiceByNumber = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error retrieving invoice',
+      error: error.message
+    });
+  }
+};
+
+// Print invoice
+export const printInvoice = async (req, res) => {
+  try {
+    const { Invoice, InvoiceItem } = req.tenantModels;
+    const { id } = req.params;
+
+    const invoice = await Invoice.findByPk(id, {
+      include: [{
+        model: InvoiceItem,
+        as: 'InvoiceItems'
+      }]
+    });
+
+    if (!invoice) {
+      return res.status(404).json({
+        success: false,
+        message: 'Invoice not found'
+      });
+    }
+
+    // Transform the data to match template expectations
+    const plainInvoice = invoice.get({ plain: true });
+    const transformedInvoice = {
+      id: plainInvoice.id,
+      invoiceNumber: plainInvoice.invoice_number,
+      invoiceType: plainInvoice.invoiceType,
+      invoiceDate: plainInvoice.invoiceDate,
+      sellerNTNCNIC: plainInvoice.sellerNTNCNIC,
+      sellerBusinessName: plainInvoice.sellerBusinessName,
+      sellerProvince: plainInvoice.sellerProvince,
+      sellerAddress: plainInvoice.sellerAddress,
+      buyerNTNCNIC: plainInvoice.buyerNTNCNIC,
+      buyerBusinessName: plainInvoice.buyerBusinessName,
+      buyerProvince: plainInvoice.buyerProvince,
+      buyerAddress: plainInvoice.buyerAddress,
+      buyerRegistrationType: plainInvoice.buyerRegistrationType,
+      invoiceRefNo: plainInvoice.invoiceRefNo,
+      scenarioId: plainInvoice.scenario_id,
+      items: plainInvoice.InvoiceItems || []
+    };
+
+    // Helper function to convert numbers to words
+    const convertToWords = (num) => {
+      const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine'];
+      const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+      const teens = ['Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
+      
+      if (num === 0) return 'Zero';
+      if (num < 10) return ones[num];
+      if (num < 20) return teens[num - 10];
+      if (num < 100) return tens[Math.floor(num / 10)] + (num % 10 !== 0 ? ' ' + ones[num % 10] : '');
+      if (num < 1000) return ones[Math.floor(num / 100)] + ' Hundred' + (num % 100 !== 0 ? ' and ' + convertToWords(num % 100) : '');
+      if (num < 100000) return convertToWords(Math.floor(num / 1000)) + ' Thousand' + (num % 1000 !== 0 ? ' ' + convertToWords(num % 1000) : '');
+      if (num < 10000000) return convertToWords(Math.floor(num / 100000)) + ' Lakh' + (num % 100000 !== 0 ? ' ' + convertToWords(num % 100000) : '');
+      return convertToWords(Math.floor(num / 10000000)) + ' Crore' + (num % 10000000 !== 0 ? ' ' + convertToWords(num % 10000000) : '');
+    };
+
+    // Calculate total for words conversion
+    const grandTotal = transformedInvoice.items.reduce((sum, item) => sum + (parseFloat(item.totalValues) || 0), 0);
+
+    // Base64 encoded logos (you can replace these with actual logo data)
+    const fbrLogoBase64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+    const companyLogoBase64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+    
+    // QR code data (you can generate actual QR code here)
+    const qrData = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+
+    // Render the EJS template
+    res.render('invoiceTemplate', {
+      invoice: transformedInvoice,
+      convertToWords: convertToWords,
+      fbrLogoBase64: fbrLogoBase64,
+      companyLogoBase64: companyLogoBase64,
+      qrData: qrData
+    }, (err, html) => {
+      if (err) {
+        console.error('Error rendering template:', err);
+        return res.status(500).json({
+          success: false,
+          message: 'Error rendering invoice template',
+          error: err.message
+        });
+      }
+      res.send(html);
+    });
+  } catch (error) {
+    console.error('Error printing invoice:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error printing invoice',
       error: error.message
     });
   }
@@ -328,14 +474,14 @@ export const getInvoiceStats = async (req, res) => {
     }
 
     const totalInvoices = await Invoice.count({ where: whereClause });
-    const totalAmount = await Invoice.sum('total_values', { where: whereClause });
+    const totalAmount = await Invoice.sum('totalValues', { where: whereClause });
 
     // Get invoices by month
     const monthlyStats = await Invoice.findAll({
       attributes: [
         [req.tenantDb.Sequelize.fn('DATE_FORMAT', req.tenantDb.Sequelize.col('created_at'), '%Y-%m'), 'month'],
         [req.tenantDb.Sequelize.fn('COUNT', req.tenantDb.Sequelize.col('id')), 'count'],
-        [req.tenantDb.Sequelize.fn('SUM', req.tenantDb.Sequelize.col('total_values')), 'total_amount']
+        [req.tenantDb.Sequelize.fn('SUM', req.tenantDb.Sequelize.col('totalValues')), 'total_amount']
       ],
       where: whereClause,
       group: [req.tenantDb.Sequelize.fn('DATE_FORMAT', req.tenantDb.Sequelize.col('created_at'), '%Y-%m')],

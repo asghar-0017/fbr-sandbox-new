@@ -3,11 +3,21 @@ import TenantDatabaseService from '../service/TenantDatabaseService.js';
 // Middleware to identify tenant and attach database to request
 export const identifyTenant = async (req, res, next) => {
   try {
-    // Get tenant ID from various sources (header, query, body, etc.)
-    const tenantId = req.headers['x-tenant-id'] || 
-                    req.query.tenantId || 
-                    req.body.tenantId ||
-                    req.params.tenantId;
+    let tenantId;
+
+
+
+    // If user is authenticated as tenant, get tenant ID from token
+    if (req.userType === 'tenant' && req.user && req.user.tenantId) {
+      tenantId = req.user.tenantId;
+    } else {
+      // Get tenant ID from various sources (header, query, body, etc.)
+      tenantId = req.headers['x-tenant-id'] || 
+                  req.query.tenantId || 
+                  req.body.tenantId ||
+                  req.params.tenantId ||
+                  req.params.tenant_id;
+    }
 
     if (!tenantId) {
       return res.status(400).json({
@@ -18,6 +28,13 @@ export const identifyTenant = async (req, res, next) => {
 
     // Get tenant database connection and models
     const tenantDb = await TenantDatabaseService.getTenantDatabase(tenantId);
+    
+    if (!tenantDb) {
+      return res.status(404).json({
+        success: false,
+        message: 'Tenant database not found'
+      });
+    }
     
     // Attach tenant information to request
     req.tenant = tenantDb.tenant;

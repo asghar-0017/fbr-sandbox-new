@@ -12,51 +12,51 @@ export const createInvoiceModel = (sequelize) => {
       type: DataTypes.STRING(100),
       allowNull: false
     },
-    invoice_type: {
+    invoiceType: {
       type: DataTypes.STRING(50),
       allowNull: true
     },
-    invoice_date: {
+    invoiceDate: {
       type: DataTypes.STRING(50),
       allowNull: true
     },
-    seller_ntn_cnic: {
+    sellerNTNCNIC: {
       type: DataTypes.STRING(50),
       allowNull: true
     },
-    seller_business_name: {
+    sellerBusinessName: {
       type: DataTypes.STRING(255),
       allowNull: true
     },
-    seller_province: {
+    sellerProvince: {
       type: DataTypes.STRING(100),
       allowNull: true
     },
-    seller_address: {
+    sellerAddress: {
       type: DataTypes.TEXT,
       allowNull: true
     },
-    buyer_ntn_cnic: {
+    buyerNTNCNIC: {
       type: DataTypes.STRING(50),
       allowNull: true
     },
-    buyer_business_name: {
+    buyerBusinessName: {
       type: DataTypes.STRING(255),
       allowNull: true
     },
-    buyer_province: {
+    buyerProvince: {
       type: DataTypes.STRING(100),
       allowNull: true
     },
-    buyer_address: {
+    buyerAddress: {
       type: DataTypes.TEXT,
       allowNull: true
     },
-    buyer_registration_type: {
+    buyerRegistrationType: {
       type: DataTypes.STRING(100),
       allowNull: true
     },
-    invoice_ref_no: {
+    invoiceRefNo: {
       type: DataTypes.STRING(100),
       allowNull: true
     },

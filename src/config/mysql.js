@@ -57,7 +57,8 @@ export const testMasterConnection = async () => {
 // Initialize master database
 export const initializeMasterDatabase = async () => {
   try {
-    await masterSequelize.sync({ alter: true });
+    // Use force: false to prevent automatic schema changes
+    await masterSequelize.sync({ force: false });
     console.log('✅ Master database synchronized successfully.');
     return true;
   } catch (error) {

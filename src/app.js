@@ -7,26 +7,32 @@ import fs from 'fs';
 import os from 'os';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
+import ejs from 'ejs';
 
 // Import MySQL connector instead of MongoDB
 import mysqlConnector from './dbConnector/mysqlConnector.js';
 
 // Import new MySQL routes
 import authRoutes from './routes/authRoutes.js';
+import tenantAuthRoutes from './routes/tenantAuthRoutes.js';
 
 import tenantRoutes from './routes/tenantRoutes.js';
-// import buyerRoutes from './routes/mysql/buyerRoutes.js';
+import buyerRoutes from './routes/buyerRoutes.js';
 import invoiceRoutes from './routes/invoiceRoutes.js';
 
 dotenv.config();
 
 const app = express();
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+// Configure EJS as view engine
+app.set('view engine', 'ejs');
+app.set('views', path.join(__dirname, 'views'));
+
 app.use(express.urlencoded({ extended: false }))
 app.use(express.static('public'));
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 app.use(express.static(path.join(__dirname, 'dist')));
 
 app.use(express.json());
@@ -47,8 +53,9 @@ app.get('/', (req, res) => {
 
 // MySQL Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/tenant-auth', tenantAuthRoutes);
 app.use('/api/admin', tenantRoutes);
-// app.use('/api/tenant/:tenantId/buyers', buyerRoutes);
+app.use('/api/tenant/:tenantId', buyerRoutes);
 app.use('/api/tenant/:tenantId', invoiceRoutes);
 
 export const logger = {
@@ -57,7 +64,7 @@ export const logger = {
 };
 
 const startServer = async () => {
-  try {
+  try { 
     // Initialize MySQL instead of MongoDB
     await mysqlConnector({}, logger);
     console.log("✅ Connected to MySQL multi-tenant database system");

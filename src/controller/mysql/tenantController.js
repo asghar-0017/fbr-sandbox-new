@@ -4,10 +4,10 @@ import Tenant from '../../model/mysql/Tenant.js';
 // Create new tenant (seller registration)
 export const createTenant = async (req, res) => {
   try {
-    const { seller_ntn_cnic, seller_business_name, seller_province, seller_address,databaseName } = req.body;
+    const { sellerNTNCNIC, sellerBusinessName, sellerProvince, sellerAddress, databaseName } = req.body;
 
     // Validate required fields
-    if (!seller_ntn_cnic || !seller_business_name) {
+    if (!sellerNTNCNIC || !sellerBusinessName) {
       return res.status(400).json({
         success: false,
         message: 'Seller NTN/CNIC and business name are required'
@@ -16,7 +16,7 @@ export const createTenant = async (req, res) => {
 
     // Check if tenant already exists
     const existingTenant = await Tenant.findOne({
-      where: { seller_ntn_cnic }
+      where: { seller_ntn_cnic: sellerNTNCNIC }
     });
 
     if (existingTenant) {
@@ -32,10 +32,10 @@ export const createTenant = async (req, res) => {
 
     // Create tenant database
     const result = await TenantDatabaseService.createTenantDatabase({
-      seller_ntn_cnic,
-      seller_business_name,
-      seller_province,
-      seller_address,
+      sellerNTNCNIC,
+      sellerBusinessName,
+      sellerProvince,
+      sellerAddress,
       databaseName
     });
 
@@ -44,8 +44,8 @@ export const createTenant = async (req, res) => {
       message: 'Tenant created successfully',
       data: {
         tenant_id: result.tenant.tenant_id,
-        seller_ntn_cnic: result.tenant.seller_ntn_cnic,
-        seller_business_name: result.tenant.seller_business_name,
+        sellerNTNCNIC: result.tenant.seller_ntn_cnic,
+        sellerBusinessName: result.tenant.seller_business_name,
         database_name: result.databaseName
       }
     });
@@ -121,7 +121,7 @@ export const getTenantById = async (req, res) => {
 export const updateTenant = async (req, res) => {
   try {
     const { tenantId } = req.params;
-    const { seller_business_name, seller_province, seller_address } = req.body;
+    const { sellerBusinessName, sellerProvince, sellerAddress } = req.body;
 
     const tenant = await Tenant.findOne({
       where: { tenant_id: tenantId }
@@ -135,9 +135,9 @@ export const updateTenant = async (req, res) => {
     }
 
     await tenant.update({
-      seller_business_name,
-      seller_province,
-      seller_address
+      seller_business_name: sellerBusinessName,
+      seller_province: sellerProvince,
+      seller_address: sellerAddress
     });
 
     res.status(200).json({

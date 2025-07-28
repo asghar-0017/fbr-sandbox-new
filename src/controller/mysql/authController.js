@@ -70,6 +70,7 @@ const resetRateLimit = (email) => {
 export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
+    console.log(email, password);
 
     // Input validation
     if (!email || !password) {
@@ -94,7 +95,7 @@ export const login = async (req, res) => {
     // Find admin user
     const admin = await AdminUser.findOne({ 
       where: { 
-        email: email.toLowerCase().trim() 
+        email: email 
       } 
     });
 

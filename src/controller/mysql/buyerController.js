@@ -4,11 +4,13 @@
 // Create new buyer
 export const createBuyer = async (req, res) => {
   try {
+
+    
     const { Buyer } = req.tenantModels;
-    const { buyer_ntn_cnic, buyer_business_name, buyer_province, buyer_address, buyer_registration_type } = req.body;
+    const { buyerNTNCNIC, buyerBusinessName, buyerProvince, buyerAddress, buyerRegistrationType } = req.body;
 
     // Validate required fields
-    if (!buyer_province || !buyer_registration_type) {
+    if (!buyerProvince || !buyerRegistrationType) {
       return res.status(400).json({
         success: false,
         message: 'Buyer province and registration type are required'
@@ -17,11 +19,11 @@ export const createBuyer = async (req, res) => {
 
     // Create buyer
     const buyer = await Buyer.create({
-      buyer_ntn_cnic,
-      buyer_business_name,
-      buyer_province,
-      buyer_address,
-      buyer_registration_type
+      buyerNTNCNIC,
+      buyerBusinessName,
+      buyerProvince,
+      buyerAddress,
+      buyerRegistrationType
     });
 
     res.status(201).json({
@@ -31,6 +33,23 @@ export const createBuyer = async (req, res) => {
     });
   } catch (error) {
     console.error('Error creating buyer:', error);
+    
+    // Handle specific database errors
+    if (error.name === 'SequelizeValidationError') {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation error',
+        errors: error.errors.map(e => e.message)
+      });
+    }
+    
+    if (error.name === 'SequelizeUniqueConstraintError') {
+      return res.status(409).json({
+        success: false,
+        message: 'Buyer with this NTN/CNIC already exists'
+      });
+    }
+    
     res.status(500).json({
       success: false,
       message: 'Error creating buyer',
@@ -51,9 +70,9 @@ export const getAllBuyers = async (req, res) => {
     // Add search functionality
     if (search) {
       whereClause[req.tenantDb.Sequelize.Op.or] = [
-        { buyer_ntn_cnic: { [req.tenantDb.Sequelize.Op.like]: `%${search}%` } },
-        { buyer_business_name: { [req.tenantDb.Sequelize.Op.like]: `%${search}%` } },
-        { buyer_province: { [req.tenantDb.Sequelize.Op.like]: `%${search}%` } }
+        { buyerNTNCNIC: { [req.tenantDb.Sequelize.Op.like]: `%${search}%` } },
+        { buyerBusinessName: { [req.tenantDb.Sequelize.Op.like]: `%${search}%` } },
+        { buyerProvince: { [req.tenantDb.Sequelize.Op.like]: `%${search}%` } }
       ];
     }
 
@@ -120,7 +139,7 @@ export const updateBuyer = async (req, res) => {
   try {
     const { Buyer } = req.tenantModels;
     const { id } = req.params;
-    const { buyer_ntn_cnic, buyer_business_name, buyer_province, buyer_address, buyer_registration_type } = req.body;
+    const { buyerNTNCNIC, buyerBusinessName, buyerProvince, buyerAddress, buyerRegistrationType } = req.body;
 
     const buyer = await Buyer.findByPk(id);
 
@@ -132,11 +151,11 @@ export const updateBuyer = async (req, res) => {
     }
 
     await buyer.update({
-      buyer_ntn_cnic,
-      buyer_business_name,
-      buyer_province,
-      buyer_address,
-      buyer_registration_type
+      buyerNTNCNIC,
+      buyerBusinessName,
+      buyerProvince,
+      buyerAddress,
+      buyerRegistrationType
     });
 
     res.status(200).json({
@@ -192,8 +211,8 @@ export const getBuyersByProvince = async (req, res) => {
     const { province } = req.params;
 
     const buyers = await Buyer.findAll({
-      where: { buyer_province: province },
-      order: [['buyer_business_name', 'ASC']]
+      where: { buyerProvince: province },
+      order: [['buyerBusinessName', 'ASC']]
     });
 
     res.status(200).json({
