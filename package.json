@@ -28,7 +28,7 @@
     "number-to-words": "^1.2.4",
     "os": "^0.1.2",
     "path": "^0.12.7",
-    "puppeteer": "^24.12.1",
+    "puppeteer": "^24.15.0",
     "qrcode": "^1.5.4",
     "sequelize": "^6.37.7",
     "sequelize-cli": "^6.6.3",

@@ -36,6 +36,10 @@ export const createInvoiceItemModel = (sequelize) => {
       type: DataTypes.DECIMAL(10, 2),
       allowNull: true
     },
+    unitPrice: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: true
+    },
     totalValues: {
       type: DataTypes.DECIMAL(10, 2),
       allowNull: true

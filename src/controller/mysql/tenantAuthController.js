@@ -62,7 +62,9 @@ export const tenantLogin = async (req, res) => {
           sellerNTNCNIC: tenant.seller_ntn_cnic,
           sellerBusinessName: tenant.seller_business_name,
           sellerProvince: tenant.seller_province,
-          sellerAddress: tenant.seller_address
+          sellerAddress: tenant.seller_address,
+          sandboxTestToken: tenant.sandboxTestToken,
+          sandboxProductionToken: tenant.sandboxProductionToken
         }
       }
     });
@@ -121,7 +123,9 @@ export const verifyTenantToken = async (req, res) => {
           sellerNTNCNIC: tenant.seller_ntn_cnic,
           sellerBusinessName: tenant.seller_business_name,
           sellerProvince: tenant.seller_province,
-          sellerAddress: tenant.seller_address
+          sellerAddress: tenant.seller_address,
+          sandboxTestToken: tenant.sandboxTestToken,
+          sandboxProductionToken: tenant.sandboxProductionToken
         }
       }
     });
@@ -148,7 +152,9 @@ export const getTenantProfile = async (req, res) => {
           sellerNTNCNIC: tenant.seller_ntn_cnic,
           sellerBusinessName: tenant.seller_business_name,
           sellerProvince: tenant.seller_province,
-          sellerAddress: tenant.seller_address
+          sellerAddress: tenant.seller_address,
+          sandboxTestToken: tenant.sandboxTestToken,
+          sandboxProductionToken: tenant.sandboxProductionToken
         }
       }
     });

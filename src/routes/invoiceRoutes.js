@@ -5,18 +5,24 @@ import { authenticateToken } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
-// All invoice routes require authentication and tenant identification
-router.use(authenticateToken);
-router.use(identifyTenant);
+// ✅ Public route — NO middleware
+router.get('/print-invoice/:id', invoiceController.printInvoice);
 
-// Invoice management routes
+// ✅ Apply middleware only for protected routes
+router.use(authenticateToken, identifyTenant);
+
+// ✅ Protected routes
 router.post('/invoices', invoiceController.createInvoice);
 router.get('/invoices', invoiceController.getAllInvoices);
 router.get('/invoices/:id', invoiceController.getInvoiceById);
-router.get('/invoices/:id/print', invoiceController.printInvoice);
 router.get('/invoices/number/:invoiceNumber', invoiceController.getInvoiceByNumber);
 router.put('/invoices/:id', invoiceController.updateInvoice);
 router.delete('/invoices/:id', invoiceController.deleteInvoice);
 router.get('/invoices/stats/summary', invoiceController.getInvoiceStats);
 
-export default router; 
+export default router;
+
+
+// 👇 Export the public route separately
+export const publicInvoiceRoutes = express.Router();
+publicInvoiceRoutes.get('/print-invoice/:id', invoiceController.printInvoice);

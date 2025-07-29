@@ -1,7 +1,12 @@
-// Invoice controller for multi-tenant MySQL system
-// This controller uses req.tenantModels.Invoice and req.tenantModels.InvoiceItem from tenant middleware
+import fs from 'fs';
+import path from 'path';
+import QRCode from 'qrcode';
+import ejs from 'ejs';
+import puppeteer from 'puppeteer';
+import numberToWords from 'number-to-words';
+import TenantDatabaseService from '../../service/TenantDatabaseService.js';
+const { toWords } = numberToWords;
 
-// Create new invoice with items
 export const createInvoice = async (req, res) => {
   try {
     const { Invoice, InvoiceItem } = req.tenantModels;
@@ -81,6 +86,7 @@ export const createInvoice = async (req, res) => {
             rate: cleanValue(item.rate),
             uoM: cleanValue(item.uoM),
             quantity: cleanNumericValue(item.quantity),
+            unitPrice: cleanNumericValue(item.unitPrice),
             totalValues: cleanNumericValue(item.totalValues),
             valueSalesExcludingST: cleanNumericValue(item.valueSalesExcludingST),
             fixedNotifiedValueOrRetailPrice: cleanNumericValue(item.fixedNotifiedValueOrRetailPrice),
@@ -165,6 +171,7 @@ export const getAllInvoices = async (req, res) => {
     // Transform the data to match frontend expectations
     const transformedInvoices = rows.map(invoice => {
       const plainInvoice = invoice.get({ plain: true });
+      plainInvoice.items = plainInvoice.InvoiceItems || []; // 👈 normalize for EJS
       return {
         id: plainInvoice.id,
         invoiceNumber: plainInvoice.invoice_number,
@@ -231,6 +238,7 @@ export const getInvoiceById = async (req, res) => {
 
     // Transform the data to match frontend expectations
     const plainInvoice = invoice.get({ plain: true });
+    plainInvoice.items = plainInvoice.InvoiceItems || []; // 👈 normalize for EJS    
     const transformedInvoice = {
       id: plainInvoice.id,
       invoiceNumber: plainInvoice.invoice_number,
@@ -302,100 +310,92 @@ export const getInvoiceByNumber = async (req, res) => {
 };
 
 // Print invoice
+
 export const printInvoice = async (req, res) => {
   try {
-    const { Invoice, InvoiceItem } = req.tenantModels;
     const { id } = req.params;
 
-    const invoice = await Invoice.findByPk(id, {
-      include: [{
-        model: InvoiceItem,
-        as: 'InvoiceItems'
-      }]
-    });
-
-    if (!invoice) {
-      return res.status(404).json({
-        success: false,
-        message: 'Invoice not found'
-      });
+    // Find invoice across all tenant databases
+    const result = await TenantDatabaseService.findInvoiceAcrossTenants(id);
+    
+    if (!result) {
+      return res.status(404).json({ message: 'Invoice not found' });
     }
 
-    // Transform the data to match template expectations
-    const plainInvoice = invoice.get({ plain: true });
-    const transformedInvoice = {
-      id: plainInvoice.id,
-      invoiceNumber: plainInvoice.invoice_number,
-      invoiceType: plainInvoice.invoiceType,
-      invoiceDate: plainInvoice.invoiceDate,
-      sellerNTNCNIC: plainInvoice.sellerNTNCNIC,
-      sellerBusinessName: plainInvoice.sellerBusinessName,
-      sellerProvince: plainInvoice.sellerProvince,
-      sellerAddress: plainInvoice.sellerAddress,
-      buyerNTNCNIC: plainInvoice.buyerNTNCNIC,
-      buyerBusinessName: plainInvoice.buyerBusinessName,
-      buyerProvince: plainInvoice.buyerProvince,
-      buyerAddress: plainInvoice.buyerAddress,
-      buyerRegistrationType: plainInvoice.buyerRegistrationType,
-      invoiceRefNo: plainInvoice.invoiceRefNo,
-      scenarioId: plainInvoice.scenario_id,
-      items: plainInvoice.InvoiceItems || []
-    };
+    const { invoice, tenantDb } = result;
+    const { InvoiceItem } = tenantDb.models;
 
-    // Helper function to convert numbers to words
-    const convertToWords = (num) => {
-      const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine'];
-      const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
-      const teens = ['Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
-      
-      if (num === 0) return 'Zero';
-      if (num < 10) return ones[num];
-      if (num < 20) return teens[num - 10];
-      if (num < 100) return tens[Math.floor(num / 10)] + (num % 10 !== 0 ? ' ' + ones[num % 10] : '');
-      if (num < 1000) return ones[Math.floor(num / 100)] + ' Hundred' + (num % 100 !== 0 ? ' and ' + convertToWords(num % 100) : '');
-      if (num < 100000) return convertToWords(Math.floor(num / 1000)) + ' Thousand' + (num % 1000 !== 0 ? ' ' + convertToWords(num % 1000) : '');
-      if (num < 10000000) return convertToWords(Math.floor(num / 100000)) + ' Lakh' + (num % 100000 !== 0 ? ' ' + convertToWords(num % 100000) : '');
-      return convertToWords(Math.floor(num / 10000000)) + ' Crore' + (num % 10000000 !== 0 ? ' ' + convertToWords(num % 10000000) : '');
-    };
-
-    // Calculate total for words conversion
-    const grandTotal = transformedInvoice.items.reduce((sum, item) => sum + (parseFloat(item.totalValues) || 0), 0);
-
-    // Base64 encoded logos (you can replace these with actual logo data)
-    const fbrLogoBase64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
-    const companyLogoBase64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
-    
-    // QR code data (you can generate actual QR code here)
-    const qrData = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
-
-    // Render the EJS template
-    res.render('invoiceTemplate', {
-      invoice: transformedInvoice,
-      convertToWords: convertToWords,
-      fbrLogoBase64: fbrLogoBase64,
-      companyLogoBase64: companyLogoBase64,
-      qrData: qrData
-    }, (err, html) => {
-      if (err) {
-        console.error('Error rendering template:', err);
-        return res.status(500).json({
-          success: false,
-          message: 'Error rendering invoice template',
-          error: err.message
-        });
-      }
-      res.send(html);
+    // Fetch invoice with items
+    const invoiceWithItems = await invoice.constructor.findOne({
+      where: { invoice_number: id },
+      include: [{ model: InvoiceItem, as: 'InvoiceItems' }]
     });
+
+    if (!invoiceWithItems) {
+      return res.status(404).json({ message: 'Invoice not found' });
+    }
+
+    // Base64 encode logos
+    const fbrLogoBase64 = fs.readFileSync(path.join(process.cwd(), 'public', 'fbr_logo.png')).toString('base64');
+    const companyLogoBase64 = fs.readFileSync(path.join(process.cwd(), 'public', 'fbr-logo-1.png')).toString('base64');
+
+    // Prepare paths
+    const pdfFileName = `${invoiceWithItems.invoice_number}.pdf`;
+    const invoiceDir = path.join(process.cwd(), 'public', 'invoices');
+    const pdfPath = path.join(invoiceDir, pdfFileName);
+
+    // Ensure output directory exists
+    if (!fs.existsSync(invoiceDir)) {
+      fs.mkdirSync(invoiceDir, { recursive: true });
+    }
+
+    // Generate QR code
+    const qrUrl =   `https://einvoice.inplsoftwares/invoices/${pdfFileName}`;
+    const qrData = await QRCode.toDataURL(qrUrl, {
+      errorCorrectionLevel: 'M',
+      width: 96
+    });
+    
+    const plainInvoice = invoiceWithItems.get({ plain: true });
+    plainInvoice.items = plainInvoice.InvoiceItems || []; // 👈 normalize for EJS
+    // Render EJS HTML
+    const html = await ejs.renderFile(
+      path.join(process.cwd(), 'src', 'views', 'invoiceTemplate.ejs'),
+      {
+        invoice: plainInvoice,
+        qrData,
+        fbrLogoBase64,
+        companyLogoBase64,
+        convertToWords: (amount) => {
+          const words = toWords(Math.floor(amount || 0));
+          return words.charAt(0).toUpperCase() + words.slice(1);
+        }
+      }
+    );
+
+    // Generate PDF using Puppeteer
+    const browser = await puppeteer.launch({
+      args: ['--no-sandbox', '--disable-setuid-sandbox']
+    });
+
+    const page = await browser.newPage();
+    await page.setContent(html, { waitUntil: 'networkidle0' });
+    await page.pdf({ path: pdfPath, format: 'A4', printBackground: true });
+    await browser.close();
+
+    // Stream PDF to browser
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename=${pdfFileName}`);
+    fs.createReadStream(pdfPath).pipe(res);
+
   } catch (error) {
-    console.error('Error printing invoice:', error);
+    console.error('PDF generation failed:', error);
     res.status(500).json({
-      success: false,
-      message: 'Error printing invoice',
+      message: 'Error generating invoice',
       error: error.message
     });
   }
 };
-
 // Update invoice
 export const updateInvoice = async (req, res) => {
   try {
@@ -505,3 +505,5 @@ export const getInvoiceStats = async (req, res) => {
     });
   }
 }; 
+
+

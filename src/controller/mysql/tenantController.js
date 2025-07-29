@@ -4,7 +4,7 @@ import Tenant from '../../model/mysql/Tenant.js';
 // Create new tenant (seller registration)
 export const createTenant = async (req, res) => {
   try {
-    const { sellerNTNCNIC, sellerBusinessName, sellerProvince, sellerAddress, databaseName } = req.body;
+    const { sellerNTNCNIC, sellerBusinessName, sellerProvince, sellerAddress, databaseName,sandboxTestToken,sandboxProductionToken} = req.body;
 
     // Validate required fields
     if (!sellerNTNCNIC || !sellerBusinessName) {
@@ -36,7 +36,9 @@ export const createTenant = async (req, res) => {
       sellerBusinessName,
       sellerProvince,
       sellerAddress,
-      databaseName
+      databaseName,
+      sandboxTestToken,
+      sandboxProductionToken
     });
 
     res.status(201).json({
@@ -46,7 +48,9 @@ export const createTenant = async (req, res) => {
         tenant_id: result.tenant.tenant_id,
         sellerNTNCNIC: result.tenant.seller_ntn_cnic,
         sellerBusinessName: result.tenant.seller_business_name,
-        database_name: result.databaseName
+        database_name: result.databaseName,
+        sandbox_test_token: result.tenant.sandboxTestToken,
+        sandbox_production_token: result.tenant.sandboxProductionToken
       }
     });
   } catch (error) {

@@ -14,7 +14,7 @@ class TenantDatabaseService {
   // Create a new tenant database
   async createTenantDatabase(tenantData) {
     try {
-      const { sellerNTNCNIC, sellerBusinessName, sellerProvince, sellerAddress, databaseName } = tenantData;
+      const { sellerNTNCNIC, sellerBusinessName, sellerProvince, sellerAddress, databaseName,sandboxTestToken,sandboxProductionToken } = tenantData;
       console.log(tenantData);  
       
       // Generate unique tenant ID
@@ -43,6 +43,8 @@ class TenantDatabaseService {
         seller_province: sellerProvince,
         seller_address: sellerAddress,
         database_name: databaseName,
+        sandboxTestToken: sandboxTestToken,
+        sandboxProductionToken: sandboxProductionToken,
         is_active: true
       });
 
@@ -192,7 +194,7 @@ class TenantDatabaseService {
     try {
       const tenants = await Tenant.findAll({
         where: { is_active: true },
-        attributes: ['id', 'tenant_id', 'seller_ntn_cnic', 'seller_business_name', 'seller_province', 'seller_address', 'is_active', 'database_name', 'created_at']
+        attributes: ['id', 'tenant_id', 'seller_ntn_cnic', 'seller_business_name', 'seller_province', 'seller_address', 'is_active', 'database_name', 'created_at', 'sandbox_test_token', 'sandbox_production_token']
       });
 
       // Map the underscore fields to camelCase for frontend compatibility
@@ -205,7 +207,9 @@ class TenantDatabaseService {
         sellerAddress: tenant.seller_address,
         is_active: tenant.is_active,
         database_name: tenant.database_name,
-        created_at: tenant.created_at
+        created_at: tenant.created_at,
+        sandboxTestToken: tenant.sandbox_test_token,
+        sandboxProductionToken: tenant.sandbox_production_token
       }));
 
       return mappedTenants;
@@ -232,6 +236,42 @@ class TenantDatabaseService {
       return tenant;
     } catch (error) {
       console.error('Error getting tenant by seller ID:', error);
+      throw error;
+    }
+  }
+
+  // Find invoice across all tenant databases
+  async findInvoiceAcrossTenants(invoiceNumber) {
+    try {
+      // Get all active tenants
+      const tenants = await this.getAllTenants();
+      
+      for (const tenant of tenants) {
+        try {
+          const tenantDb = await this.getTenantDatabase(tenant.tenant_id);
+          const { Invoice } = tenantDb.models;
+          
+          const invoice = await Invoice.findOne({
+            where: { invoice_number: invoiceNumber }
+          });
+          
+          if (invoice) {
+            return {
+              invoice,
+              tenantDb,
+              tenant
+            };
+          }
+        } catch (error) {
+          console.error(`Error searching tenant ${tenant.tenant_id}:`, error);
+          // Continue searching other tenants
+          continue;
+        }
+      }
+      
+      return null; // Invoice not found in any tenant
+    } catch (error) {
+      console.error('Error finding invoice across tenants:', error);
       throw error;
     }
   }

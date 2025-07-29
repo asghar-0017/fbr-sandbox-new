@@ -37,6 +37,16 @@ const Tenant = masterSequelize.define('Tenant', {
     type: DataTypes.STRING(100),
     allowNull: false,
   },
+  sandboxTestToken: {
+    type: DataTypes.STRING(255),
+    allowNull: true,
+    field: 'sandbox_test_token'
+  },
+  sandboxProductionToken: {
+    type: DataTypes.STRING(255),
+    allowNull: true,
+    field: 'sandbox_production_token'
+  },
   is_active: {
     type: DataTypes.BOOLEAN,
     defaultValue: true
