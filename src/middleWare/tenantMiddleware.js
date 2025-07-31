@@ -5,13 +5,23 @@ export const identifyTenant = async (req, res, next) => {
   try {
     let tenantId;
 
-
-
     // If user is authenticated as tenant, get tenant ID from token
     if (req.userType === 'tenant' && req.user && req.user.tenantId) {
       tenantId = req.user.tenantId;
-    } else {
-      // Get tenant ID from various sources (header, query, body, etc.)
+    } else if (req.userType === 'tenant' && req.user && req.user.sellerNtnCnic) {
+      // Fallback: if tenantId is not available but sellerNtnCnic is, we can look up the tenant
+      try {
+        const tenant = await TenantDatabaseService.getTenantBySellerId(req.user.sellerNtnCnic);
+        if (tenant) {
+          tenantId = tenant.tenant_id;
+        }
+      } catch (error) {
+        console.error('Error looking up tenant by seller NTN/CNIC:', error);
+      }
+    }
+    
+    // If still no tenantId, try to get it from request parameters
+    if (!tenantId) {
       tenantId = req.headers['x-tenant-id'] || 
                   req.query.tenantId || 
                   req.body.tenantId ||

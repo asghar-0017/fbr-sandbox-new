@@ -97,7 +97,21 @@ export const getTenantById = async (req, res) => {
     const { tenantId } = req.params;
 
     const tenant = await Tenant.findOne({
-      where: { tenant_id: tenantId }
+      where: { tenant_id: tenantId },
+      attributes: [
+        'id',
+        'tenant_id',
+        'seller_ntn_cnic',
+        'seller_business_name',
+        'seller_province',
+        'seller_address',
+        'is_active',
+        'database_name',
+        'created_at',
+        'sandbox_test_token',
+        'sandbox_production_token'
+      ],
+      raw: true
     });
 
     if (!tenant) {
@@ -107,9 +121,24 @@ export const getTenantById = async (req, res) => {
       });
     }
 
+    // Map the underscore fields to camelCase for frontend compatibility
+    const mappedTenant = {
+      id: tenant.id,
+      tenant_id: tenant.tenant_id,
+      sellerNTNCNIC: tenant.seller_ntn_cnic,
+      sellerBusinessName: tenant.seller_business_name,
+      sellerProvince: tenant.seller_province,
+      sellerAddress: tenant.seller_address,
+      is_active: tenant.is_active,
+      database_name: tenant.database_name,
+      created_at: tenant.created_at,
+      sandboxTestToken: tenant.sandbox_test_token,
+      sandboxProductionToken: tenant.sandbox_production_token
+    };
+
     res.status(200).json({
       success: true,
-      data: tenant
+      data: mappedTenant
     });
   } catch (error) {
     console.error('Error getting tenant:', error);

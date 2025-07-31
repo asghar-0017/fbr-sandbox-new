@@ -1,7 +1,7 @@
 import express from 'express';
 import * as tenantAuthController from '../controller/mysql/tenantAuthController.js';
 import { identifyTenant } from '../middleWare/tenantMiddleware.js';
-import { authenticateToken } from '../middleware/authMiddleware.js';
+import { authenticateToken } from '../middleWare/authMiddleware.js';
 
 const router = express.Router();
 

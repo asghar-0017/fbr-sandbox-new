@@ -1,6 +1,6 @@
 import express from 'express';
 import * as authController from '../controller/mysql/authController.js';
-import { authenticateToken } from '../middleware/authMiddleware.js';
+import { authenticateToken } from '../middleWare/authMiddleware.js';
 
 const router = express.Router();
 

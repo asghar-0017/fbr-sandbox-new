@@ -45,12 +45,6 @@ app.use(cors({
 
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/invoices', express.static(path.join(process.cwd(), 'public/invoices')));
-app.use(express.static(path.join(__dirname, 'dist')));
-
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'dist', 'index.html'));
-});
-
 // MySQL Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/tenant-auth', tenantAuthRoutes);
@@ -60,6 +54,11 @@ app.use('/api/tenant/:tenantId', invoiceRoutes);
 
 // Public Invoice Routes
 app.use('/api', publicInvoiceRoutes);
+
+// Catch-all route for SPA - must be last
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+});
 
 
 export const logger = {
@@ -73,7 +72,7 @@ const startServer = async () => {
     await mysqlConnector({}, logger);
     console.log("✅ Connected to MySQL multi-tenant database system");
     
-    const port = process.env.PORT || 5173;
+    const port = process.env.PORT || 5150 ;
     app.listen(port, () => {
       console.log('🚀 Server is running on port', port);
       console.log('📋 MySQL Multi-Tenant System Ready!');

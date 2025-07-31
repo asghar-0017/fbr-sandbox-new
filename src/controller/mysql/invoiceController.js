@@ -350,7 +350,7 @@ export const printInvoice = async (req, res) => {
     }
 
     // Generate QR code
-    const qrUrl =   `https://einvoice.inplsoftwares/invoices/${pdfFileName}`;
+    const qrUrl =   `http://localhost:5150/invoices/${pdfFileName}`;
     const qrData = await QRCode.toDataURL(qrUrl, {
       errorCorrectionLevel: 'M',
       width: 96

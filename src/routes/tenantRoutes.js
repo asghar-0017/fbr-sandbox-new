@@ -1,6 +1,6 @@
 import express from 'express';
 import * as tenantController from '../controller/mysql/tenantController.js';
-import { authenticateToken, requireAdmin } from '../middleware/authMiddleware.js';
+import { authenticateToken, requireAdmin } from '../middleWare/authMiddleware.js';
 
 const router = express.Router();
 

@@ -194,23 +194,38 @@ class TenantDatabaseService {
     try {
       const tenants = await Tenant.findAll({
         where: { is_active: true },
-        attributes: ['id', 'tenant_id', 'seller_ntn_cnic', 'seller_business_name', 'seller_province', 'seller_address', 'is_active', 'database_name', 'created_at', 'sandbox_test_token', 'sandbox_production_token']
+        attributes: [
+          'id',
+          'tenant_id',
+          'seller_ntn_cnic',
+          'seller_business_name',
+          'seller_province',
+          'seller_address',
+          'is_active',
+          'database_name',
+          'created_at',
+          'sandbox_test_token',
+          'sandbox_production_token'
+        ],
+        raw: true
       });
-
+      console.log('Fetched tenants:', tenants);
       // Map the underscore fields to camelCase for frontend compatibility
       const mappedTenants = tenants.map(tenant => ({
-        id: tenant.id,
-        tenant_id: tenant.tenant_id,
-        sellerNTNCNIC: tenant.seller_ntn_cnic,
-        sellerBusinessName: tenant.seller_business_name,
-        sellerProvince: tenant.seller_province,
-        sellerAddress: tenant.seller_address,
-        is_active: tenant.is_active,
-        database_name: tenant.database_name,
-        created_at: tenant.created_at,
-        sandboxTestToken: tenant.sandbox_test_token,
-        sandboxProductionToken: tenant.sandbox_production_token
-      }));
+  id: tenant.id,
+  tenant_id: tenant.tenant_id,
+  sellerNTNCNIC: tenant.seller_ntn_cnic,
+  sellerBusinessName: tenant.seller_business_name,
+  sellerProvince: tenant.seller_province,
+  sellerAddress: tenant.seller_address,
+  is_active: tenant.is_active,
+  database_name: tenant.database_name,
+  created_at: tenant.created_at,
+  sandboxTestToken: tenant.sandbox_test_token,
+  sandboxProductionToken: tenant.sandbox_production_token
+}));
+
+      console.log('Mapped tenants:', mappedTenants);
 
       return mappedTenants;
     } catch (error) {
