@@ -6,10 +6,10 @@ dotenv.config();
 // Master database configuration
 export const masterConfig = {
   host: process.env.MYSQL_HOST || 'localhost',
-  port: process.env.MYSQL_PORT || 3307,
-  username: process.env.MYSQL_USER || 'root',
-  password: process.env.MYSQL_PASSWORD || 'root',
-  database: process.env.MYSQL_MASTER_DB || 'fbr_master',
+    port: process.env.MYSQL_PORT || 3306,
+    username: process.env.MYSQL_USER || 'fr_master_o',
+    password: process.env.MYSQL_PASSWORD || 'noLograt$5aion',
+  database: process.env.MYSQL_MASTER_DB || 'fr_master',
   dialect: 'mysql',
   logging: process.env.NODE_ENV === 'development' ? console.log : false,
   pool: {
@@ -17,7 +17,10 @@ export const masterConfig = {
     min: 0,
     acquire: 30000,
     idle: 10000
-  }
+  },
+  dialectOptions: {
+    connectTimeout: 10000 // 10 seconds, increase if needed
+  },
 };
 
 // Master database connection
@@ -27,9 +30,9 @@ export const masterSequelize = new Sequelize(masterConfig);
 export const createTenantConnection = (databaseName) => {
   return new Sequelize({
     host: process.env.MYSQL_HOST || 'localhost',
-    port: process.env.MYSQL_PORT || 3307,
-    username: process.env.MYSQL_USER || 'root',
-    password: process.env.MYSQL_PASSWORD || 'root',
+    port: process.env.MYSQL_PORT || 3306,
+    username: process.env.MYSQL_USER || 'fr_master_o',
+    password: process.env.MYSQL_PASSWORD || 'noLograt$5aion',
     database: databaseName,
     dialect: 'mysql',
     logging: process.env.NODE_ENV === 'development' ? console.log : false,
