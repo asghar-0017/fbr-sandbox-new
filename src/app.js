@@ -58,7 +58,7 @@ app.use('/api', publicInvoiceRoutes);
 // Catch-all route for SPA - must be last
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'dist', 'index.html'));
-});
+})
 
 
 export const logger = {
