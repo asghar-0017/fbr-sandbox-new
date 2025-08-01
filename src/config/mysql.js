@@ -29,7 +29,7 @@ export const masterSequelize = new Sequelize(masterConfig);
 // Function to create tenant database connection
 export const createTenantConnection = (databaseName) => {
   return new Sequelize({
-    host: process.env.MYSQL_HOST || 'localhost',
+    host: process.env.MYSQL_HOST || '45.55.137.96',
     port: process.env.MYSQL_PORT || 3306,
     username: process.env.MYSQL_USER || 'fr_master_o',
     password: process.env.MYSQL_PASSWORD || 'noLograt$5aion',
@@ -41,6 +41,9 @@ export const createTenantConnection = (databaseName) => {
       min: 0,
       acquire: 30000,
       idle: 10000
+    },
+    dialectOptions: {
+      connectTimeout: 10000
     }
   });
 };

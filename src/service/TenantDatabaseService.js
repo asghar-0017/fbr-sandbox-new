@@ -15,24 +15,47 @@ class TenantDatabaseService {
   async createTenantDatabase(tenantData) {
     try {
       const { sellerNTNCNIC, sellerBusinessName, sellerProvince, sellerAddress, databaseName,sandboxTestToken,sandboxProductionToken } = tenantData;
-      console.log(tenantData);  
+      console.log('Creating tenant database with data:', tenantData);  
       
       // Generate unique tenant ID
       const tenantId = `tenant_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       
+      console.log('Connecting to MySQL server to create database...');
    
       // Create database connection without specifying database (to create it)
       const tempSequelize = new (await import('sequelize')).Sequelize({
-        host: process.env.MYSQL_HOST || 'localhost',
-        port: process.env.MYSQL_PORT || 3307,
-        username: process.env.MYSQL_USER || 'root',
-        password: process.env.MYSQL_PASSWORD || 'root',
+        host: process.env.MYSQL_HOST || '45.55.137.96',
+        port: process.env.MYSQL_PORT || 3306,
+        username: process.env.MYSQL_USER || 'fr_master_o',
+        password: process.env.MYSQL_PASSWORD || 'noLograt$5aion',
         dialect: 'mysql',
-        logging: false
+        logging: false,
+        pool: {
+          max: 5,
+          min: 0,
+          acquire: 30000,
+          idle: 10000
+        },
+        dialectOptions: {
+          connectTimeout: 10000
+        }
       });
 
+      // Test connection first
+      await tempSequelize.authenticate();
+      console.log('✅ Successfully connected to MySQL server');
+
       // Create the database
+      console.log(`Creating database: ${databaseName}`);
       await tempSequelize.query(`CREATE DATABASE IF NOT EXISTS \`${databaseName}\``);
+      console.log(`✅ Database ${databaseName} created successfully`);
+      
+      // Grant privileges to the user for the new database
+      console.log(`Granting privileges for database: ${databaseName}`);
+      await tempSequelize.query(`GRANT ALL PRIVILEGES ON \`${databaseName}\`.* TO '${process.env.MYSQL_USER || 'fr_master_o'}'@'%'`);
+      await tempSequelize.query(`FLUSH PRIVILEGES`);
+      console.log(`✅ Privileges granted for database: ${databaseName}`);
+      
       await tempSequelize.close();
 
       // Create tenant record in master database
@@ -57,7 +80,27 @@ class TenantDatabaseService {
         databaseName
       };
     } catch (error) {
-      console.error('Error creating tenant database:', error);
+      console.error('❌ Error creating tenant database:', error);
+      
+      // Log more specific error information
+      if (error.parent) {
+        console.error('❌ Connection error details:', {
+          code: error.parent.code,
+          errno: error.parent.errno,
+          sqlMessage: error.parent.sqlMessage,
+          sqlState: error.parent.sqlState
+        });
+      }
+      
+      // Provide more specific error messages
+      if (error.name === 'SequelizeConnectionRefusedError') {
+        throw new Error(`Failed to connect to MySQL server. Please check if MySQL is running and the connection parameters are correct. Error: ${error.message}`);
+      } else if (error.name === 'SequelizeAccessDeniedError') {
+        throw new Error(`Access denied to MySQL server. Please check username and password. Error: ${error.message}`);
+      } else if (error.name === 'SequelizeHostNotFoundError') {
+        throw new Error(`MySQL host not found. Please check the host configuration. Error: ${error.message}`);
+      }
+      
       throw error;
     }
   }
@@ -65,7 +108,13 @@ class TenantDatabaseService {
   // Initialize tenant database with all required tables
   async initializeTenantDatabase(databaseName) {
     try {
+      console.log(`Initializing tenant database: ${databaseName}`);
+      
       const sequelize = createTenantConnection(databaseName);
+      
+      // Test connection to the specific database
+      await sequelize.authenticate();
+      console.log(`✅ Successfully connected to tenant database: ${databaseName}`);
       
       // Create models for this tenant
       const Buyer = createBuyerModel(sequelize);
@@ -77,7 +126,9 @@ class TenantDatabaseService {
       InvoiceItem.belongsTo(Invoice, { foreignKey: 'invoice_id' });
 
       // Sync all models to create tables
+      console.log(`Creating tables in database: ${databaseName}`);
       await sequelize.sync({ alter: true });
+      console.log(`✅ Tables created successfully in database: ${databaseName}`);
 
       // Store connection and models
       this.tenantConnections.set(databaseName, sequelize);
@@ -91,6 +142,17 @@ class TenantDatabaseService {
       return true;
     } catch (error) {
       console.error(`❌ Error initializing tenant database ${databaseName}:`, error);
+      
+      // Log more specific error information
+      if (error.parent) {
+        console.error(`❌ Database initialization error details for ${databaseName}:`, {
+          code: error.parent.code,
+          errno: error.parent.errno,
+          sqlMessage: error.parent.sqlMessage,
+          sqlState: error.parent.sqlState
+        });
+      }
+      
       throw error;
     }
   }

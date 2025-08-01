@@ -26,9 +26,15 @@ export const createTenant = async (req, res) => {
       });
     }
 
-    // Generate unique database name
-    const timestamp = Date.now();
-    const randomSuffix = Math.random().toString(36).substr(2, 6);
+    // Generate unique database name if not provided
+    let finalDatabaseName = databaseName;
+    if (!finalDatabaseName) {
+      const timestamp = Date.now();
+      const randomSuffix = Math.random().toString(36).substr(2, 6);
+      finalDatabaseName = `tenant_${sellerNTNCNIC.replace(/[^a-zA-Z0-9]/g, '_')}_${timestamp}_${randomSuffix}`;
+    }
+
+    console.log('Creating tenant with database name:', finalDatabaseName);
 
     // Create tenant database
     const result = await TenantDatabaseService.createTenantDatabase({
@@ -36,7 +42,7 @@ export const createTenant = async (req, res) => {
       sellerBusinessName,
       sellerProvince,
       sellerAddress,
-      databaseName,
+      databaseName: finalDatabaseName,
       sandboxTestToken,
       sandboxProductionToken
     });
