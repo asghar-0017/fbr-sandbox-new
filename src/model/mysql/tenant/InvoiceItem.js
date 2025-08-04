@@ -87,6 +87,10 @@ export const createInvoiceItemModel = (sequelize) => {
     sroItemSerialNo: {
       type: DataTypes.STRING(50),
       allowNull: true
+    },
+    billOfLadingUoM: {
+      type: DataTypes.STRING(50),
+      allowNull: true
     }
   }, {
     tableName: 'invoice_items',

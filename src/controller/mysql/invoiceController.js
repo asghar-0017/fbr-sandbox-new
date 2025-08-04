@@ -98,7 +98,8 @@ export const createInvoice = async (req, res) => {
             fedPayable: cleanNumericValue(item.fedPayable),
             discount: cleanNumericValue(item.discount),
             saleType: cleanValue(item.saleType),
-            sroItemSerialNo: cleanValue(item.sroItemSerialNo)
+            sroItemSerialNo: cleanValue(item.sroItemSerialNo),
+            billOfLadingUoM: cleanValue(item.billOfLadingUoM)
           };
           
           // Debug: Log the mapped item
@@ -136,7 +137,7 @@ export const createInvoice = async (req, res) => {
 export const getAllInvoices = async (req, res) => {
   try {
     const { Invoice, InvoiceItem } = req.tenantModels;
-    const { page = 1, limit = 10, search, start_date, end_date } = req.query;
+    const { page = 1, limit = 10, search, start_date, end_date, sale_type } = req.query;
 
     const offset = (page - 1) * limit;
     const whereClause = {};
@@ -148,6 +149,11 @@ export const getAllInvoices = async (req, res) => {
         { buyerBusinessName: { [req.tenantDb.Sequelize.Op.like]: `%${search}%` } },
         { sellerBusinessName: { [req.tenantDb.Sequelize.Op.like]: `%${search}%` } }
       ];
+    }
+
+    // Add sale type filter
+    if (sale_type && sale_type !== 'All') {
+      whereClause.invoiceType = sale_type;
     }
 
     // Add date range filter
