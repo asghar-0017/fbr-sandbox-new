@@ -13,12 +13,15 @@ router.use(authenticateToken, identifyTenant);
 
 // ✅ Protected routes
 router.post('/invoices', invoiceController.createInvoice);
+router.post('/invoices/save', invoiceController.saveInvoice);
+router.post('/invoices/save-validate', invoiceController.saveAndValidateInvoice);
 router.get('/invoices', invoiceController.getAllInvoices);
 router.get('/invoices/number/:invoiceNumber', invoiceController.getInvoiceByNumber);
 router.get('/invoices/stats/summary', invoiceController.getInvoiceStats);
 router.get('/invoices/:id', invoiceController.getInvoiceById);
 router.put('/invoices/:id', invoiceController.updateInvoice);
 router.delete('/invoices/:id', invoiceController.deleteInvoice);
+router.post('/invoices/:id/submit', invoiceController.submitSavedInvoice);
 
 export default router;
 

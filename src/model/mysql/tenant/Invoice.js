@@ -63,6 +63,15 @@ export const createInvoiceModel = (sequelize) => {
     scenario_id: {
       type: DataTypes.STRING(100),
       allowNull: true
+    },
+    status: {
+      type: DataTypes.ENUM('draft', 'saved', 'validated', 'submitted'),
+      allowNull: false,
+      defaultValue: 'draft'
+    },
+    fbr_invoice_number: {
+      type: DataTypes.STRING(100),
+      allowNull: true
     }
   }, {
     tableName: 'invoices',
