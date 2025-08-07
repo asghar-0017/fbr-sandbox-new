@@ -19,6 +19,7 @@ import tenantAuthRoutes from './routes/tenantAuthRoutes.js';
 import tenantRoutes from './routes/tenantRoutes.js';
 import buyerRoutes from './routes/buyerRoutes.js';
 import invoiceRoutes ,{ publicInvoiceRoutes } from './routes/invoiceRoutes.js';
+import hsCodeRoutes from './routes/hsCodeRoutes.js';
 
 dotenv.config();
 
@@ -51,6 +52,9 @@ app.use('/api/tenant-auth', tenantAuthRoutes);
 app.use('/api/admin', tenantRoutes);
 app.use('/api/tenant/:tenantId', buyerRoutes);
 app.use('/api/tenant/:tenantId', invoiceRoutes);
+
+// HS Code Routes (with caching)
+app.use('/api', hsCodeRoutes);
 
 // Public Invoice Routes
 app.use('/api', publicInvoiceRoutes);

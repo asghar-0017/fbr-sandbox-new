@@ -4,8 +4,6 @@
 // Create new buyer
 export const createBuyer = async (req, res) => {
   try {
-
-    
     const { Buyer } = req.tenantModels;
     const { buyerNTNCNIC, buyerBusinessName, buyerProvince, buyerAddress, buyerRegistrationType } = req.body;
 
@@ -15,6 +13,20 @@ export const createBuyer = async (req, res) => {
         success: false,
         message: 'Buyer province and registration type are required'
       });
+    }
+
+    // Check if buyer with same NTN already exists
+    if (buyerNTNCNIC) {
+      const existingBuyer = await Buyer.findOne({
+        where: { buyerNTNCNIC: buyerNTNCNIC }
+      });
+
+      if (existingBuyer) {
+        return res.status(409).json({
+          success: false,
+          message: `Buyer with NTN/CNIC "${buyerNTNCNIC}" already exists. Please use a different NTN/CNIC or update the existing buyer.`
+        });
+      }
     }
 
     // Create buyer
@@ -150,6 +162,23 @@ export const updateBuyer = async (req, res) => {
       });
     }
 
+    // Check if the new NTN already exists with another buyer
+    if (buyerNTNCNIC && buyerNTNCNIC !== buyer.buyerNTNCNIC) {
+      const existingBuyer = await Buyer.findOne({
+        where: { 
+          buyerNTNCNIC: buyerNTNCNIC,
+          id: { [req.tenantDb.Sequelize.Op.ne]: id } // Exclude current buyer from check
+        }
+      });
+
+      if (existingBuyer) {
+        return res.status(409).json({
+          success: false,
+          message: `Buyer with NTN/CNIC "${buyerNTNCNIC}" already exists. Please use a different NTN/CNIC.`
+        });
+      }
+    }
+
     await buyer.update({
       buyerNTNCNIC,
       buyerBusinessName,
@@ -165,6 +194,23 @@ export const updateBuyer = async (req, res) => {
     });
   } catch (error) {
     console.error('Error updating buyer:', error);
+    
+    // Handle specific database errors
+    if (error.name === 'SequelizeValidationError') {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation error',
+        errors: error.errors.map(e => e.message)
+      });
+    }
+    
+    if (error.name === 'SequelizeUniqueConstraintError') {
+      return res.status(409).json({
+        success: false,
+        message: 'Buyer with this NTN/CNIC already exists'
+      });
+    }
+    
     res.status(500).json({
       success: false,
       message: 'Error updating buyer',
