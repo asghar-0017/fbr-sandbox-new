@@ -18,6 +18,7 @@ router.post('/invoices/save-validate', invoiceController.saveAndValidateInvoice)
 router.get('/invoices', invoiceController.getAllInvoices);
 router.get('/invoices/number/:invoiceNumber', invoiceController.getInvoiceByNumber);
 router.get('/invoices/stats/summary', invoiceController.getInvoiceStats);
+router.get('/dashboard/summary', invoiceController.getDashboardSummary);
 router.get('/invoices/:id', invoiceController.getInvoiceById);
 router.put('/invoices/:id', invoiceController.updateInvoice);
 router.delete('/invoices/:id', invoiceController.deleteInvoice);

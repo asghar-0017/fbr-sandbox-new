@@ -20,18 +20,22 @@ export const createInvoice = async (req, res) => {
     // Debug: Log the received items data
     console.log('Received items data:', JSON.stringify(items, null, 2));
 
-    // Validate required fields
-    if (!invoice_number) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invoice number and date are required'
-      });
+    // Enforce allowed statuses only
+    const allowedStatuses = ['draft', 'posted'];
+    if (!allowedStatuses.includes(status)) {
+      return res.status(400).json({ success: false, message: "Invalid status. Allowed: 'draft' or 'posted'" });
+    }
+
+    // For posted invoices, an explicit invoice_number is required
+    if (status === 'posted' && !invoice_number) {
+      return res.status(400).json({ success: false, message: 'Invoice number is required for posted invoices' });
     }
 
     // Check if invoice number already exists
-    const existingInvoice = await Invoice.findOne({
-      where: { invoice_number }
-    });
+    let existingInvoice = null;
+    if (invoice_number) {
+      existingInvoice = await Invoice.findOne({ where: { invoice_number } });
+    }
 
     if (existingInvoice) {
       return res.status(409).json({
@@ -44,7 +48,7 @@ export const createInvoice = async (req, res) => {
     const result = await req.tenantDb.transaction(async (t) => {
       // Create invoice
       const invoice = await Invoice.create({
-        invoice_number,
+        invoice_number: invoice_number || `DRAFT_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         invoiceType,
         invoiceDate,
         sellerNTNCNIC,
@@ -141,35 +145,69 @@ export const saveInvoice = async (req, res) => {
   try {
     const { Invoice, InvoiceItem } = req.tenantModels;
     const { 
+      id,
       invoiceType, invoiceDate,
       sellerNTNCNIC, sellerBusinessName, sellerProvince, sellerAddress,
       buyerNTNCNIC, buyerBusinessName, buyerProvince, buyerAddress, buyerRegistrationType,
       invoiceRefNo, scenario_id, items 
     } = req.body;
 
-    // Generate a temporary invoice number for draft
-    const tempInvoiceNumber = `DRAFT_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-
-    // Create invoice with draft status
+    // Create or update draft invoice in a transaction
     const result = await req.tenantDb.transaction(async (t) => {
-      const invoice = await Invoice.create({
-        invoice_number: tempInvoiceNumber,
-        invoiceType,
-        invoiceDate,
-        sellerNTNCNIC,
-        sellerBusinessName,
-        sellerProvince,
-        sellerAddress,
-        buyerNTNCNIC,
-        buyerBusinessName,
-        buyerProvince,
-        buyerAddress,
-        buyerRegistrationType,
-        invoiceRefNo,
-        scenario_id,
-        status: 'draft',
-        fbr_invoice_number: null
-      }, { transaction: t });
+      let invoice = null;
+
+      if (id) {
+        invoice = await Invoice.findByPk(id, { transaction: t });
+        if (!invoice) {
+          throw new Error('Invoice not found');
+        }
+        if (invoice.status !== 'draft') {
+          throw new Error('Only draft invoices can be updated');
+        }
+
+        // Update invoice header
+        await invoice.update({
+          invoiceType,
+          invoiceDate,
+          sellerNTNCNIC,
+          sellerBusinessName,
+          sellerProvince,
+          sellerAddress,
+          buyerNTNCNIC,
+          buyerBusinessName,
+          buyerProvince,
+          buyerAddress,
+          buyerRegistrationType,
+          invoiceRefNo,
+          scenario_id,
+          status: 'draft',
+          fbr_invoice_number: null
+        }, { transaction: t });
+
+        // Replace items
+        await InvoiceItem.destroy({ where: { invoice_id: invoice.id }, transaction: t });
+      } else {
+        // Generate a temporary invoice number for draft
+        const tempInvoiceNumber = `DRAFT_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        invoice = await Invoice.create({
+          invoice_number: tempInvoiceNumber,
+          invoiceType,
+          invoiceDate,
+          sellerNTNCNIC,
+          sellerBusinessName,
+          sellerProvince,
+          sellerAddress,
+          buyerNTNCNIC,
+          buyerBusinessName,
+          buyerProvince,
+          buyerAddress,
+          buyerRegistrationType,
+          invoiceRefNo,
+          scenario_id,
+          status: 'draft',
+          fbr_invoice_number: null
+        }, { transaction: t });
+      }
 
       // Create invoice items if provided
       if (items && Array.isArray(items) && items.length > 0) {
@@ -242,6 +280,7 @@ export const saveAndValidateInvoice = async (req, res) => {
   try {
     const { Invoice, InvoiceItem } = req.tenantModels;
     const { 
+      id,
       invoiceType, invoiceDate,
       sellerNTNCNIC, sellerBusinessName, sellerProvince, sellerAddress,
       buyerNTNCNIC, buyerBusinessName, buyerProvince, buyerAddress, buyerRegistrationType,
@@ -283,28 +322,56 @@ export const saveAndValidateInvoice = async (req, res) => {
       });
     }
 
-    // Create invoice with saved status
+    // Save as draft (validated) - upsert behavior like saveInvoice
     const result = await req.tenantDb.transaction(async (t) => {
-      const invoice = await Invoice.create({
-        invoice_number: tempInvoiceNumber,
-        invoiceType,
-        invoiceDate,
-        sellerNTNCNIC,
-        sellerBusinessName,
-        sellerProvince,
-        sellerAddress,
-        buyerNTNCNIC,
-        buyerBusinessName,
-        buyerProvince,
-        buyerAddress,
-        buyerRegistrationType,
-        invoiceRefNo,
-        scenario_id,
-        status: 'saved',
-        fbr_invoice_number: null
-      }, { transaction: t });
+      let invoice = null;
+      if (id) {
+        invoice = await Invoice.findByPk(id, { transaction: t });
+        if (!invoice) {
+          throw new Error('Invoice not found');
+        }
+        if (invoice.status !== 'draft') {
+          throw new Error('Only draft invoices can be updated');
+        }
+        await invoice.update({
+          invoiceType,
+          invoiceDate,
+          sellerNTNCNIC,
+          sellerBusinessName,
+          sellerProvince,
+          sellerAddress,
+          buyerNTNCNIC,
+          buyerBusinessName,
+          buyerProvince,
+          buyerAddress,
+          buyerRegistrationType,
+          invoiceRefNo,
+          scenario_id,
+          status: 'draft',
+          fbr_invoice_number: null
+        }, { transaction: t });
+        await InvoiceItem.destroy({ where: { invoice_id: invoice.id }, transaction: t });
+      } else {
+        invoice = await Invoice.create({
+          invoice_number: tempInvoiceNumber,
+          invoiceType,
+          invoiceDate,
+          sellerNTNCNIC,
+          sellerBusinessName,
+          sellerProvince,
+          sellerAddress,
+          buyerNTNCNIC,
+          buyerBusinessName,
+          buyerProvince,
+          buyerAddress,
+          buyerRegistrationType,
+          invoiceRefNo,
+          scenario_id,
+          status: 'draft',
+          fbr_invoice_number: null
+        }, { transaction: t });
+      }
 
-      // Create invoice items if provided
       if (items && Array.isArray(items) && items.length > 0) {
         const invoiceItems = items.map(item => {
           const cleanValue = (value) => {
@@ -313,14 +380,12 @@ export const saveAndValidateInvoice = async (req, res) => {
             }
             return value;
           };
-
           const cleanNumericValue = (value) => {
             const cleaned = cleanValue(value);
             if (cleaned === null) return null;
             const num = parseFloat(cleaned);
             return isNaN(num) ? null : num;
           };
-
           return {
             invoice_id: invoice.id,
             hsCode: cleanValue(item.hsCode),
@@ -344,16 +409,14 @@ export const saveAndValidateInvoice = async (req, res) => {
             billOfLadingUoM: cleanValue(item.billOfLadingUoM)
           };
         });
-
         await InvoiceItem.bulkCreate(invoiceItems, { transaction: t });
       }
-
       return invoice;
     });
 
     res.status(201).json({
       success: true,
-      message: 'Invoice saved and validated successfully',
+      message: 'Invoice validated and saved as draft successfully',
       data: {
         invoice_id: result.id,
         invoice_number: result.invoice_number,
@@ -779,10 +842,10 @@ export const submitSavedInvoice = async (req, res) => {
       });
     }
 
-    if (invoice.status !== 'saved') {
+    if (invoice.status !== 'draft') {
       return res.status(400).json({
         success: false,
-        message: 'Only saved invoices can be submitted to FBR'
+        message: 'Only draft invoices can be posted to FBR'
       });
     }
 
@@ -808,7 +871,8 @@ export const submitSavedInvoice = async (req, res) => {
       buyerAddress: invoice.buyerAddress,
       buyerRegistrationType: invoice.buyerRegistrationType,
       invoiceRefNo: invoice.invoiceRefNo,
-      scenario_id: invoice.scenario_id,
+      // FBR expects camelCase key: scenarioId
+      scenarioId: invoice.scenario_id,
       items: invoice.InvoiceItems.map(item => ({
         hsCode: item.hsCode,
         productDescription: item.productDescription,
@@ -851,27 +915,31 @@ export const submitSavedInvoice = async (req, res) => {
       req.tenant.sandboxTestToken
     );
 
-    if (postRes.status !== 200 || postRes.data.validationResponse.statusCode !== "00") {
+    const hasValidation =
+      postRes && postRes.data && typeof postRes.data === 'object' && postRes.data.validationResponse;
+    const statusCode = hasValidation ? postRes.data.validationResponse.statusCode : undefined;
+
+    if (postRes.status !== 200 || statusCode !== "00") {
       return res.status(400).json({
         success: false,
         message: 'FBR submission failed',
-        details: postRes.data.validationResponse
+        details: hasValidation ? postRes.data.validationResponse : { raw: postRes.data ?? null, note: 'Missing validationResponse in FBR response' }
       });
     }
 
     // Update invoice status
     await invoice.update({
-      status: 'submitted',
-      fbr_invoice_number: postRes.data.invoiceNumber
+      status: 'posted',
+      fbr_invoice_number: postRes?.data?.invoiceNumber ?? null
     });
 
     res.status(200).json({
       success: true,
-      message: 'Invoice submitted successfully to FBR',
+      message: 'Invoice posted successfully to FBR',
       data: {
         invoice_id: invoice.id,
         fbr_invoice_number: postRes.data.invoiceNumber,
-        status: 'submitted'
+        status: 'posted'
       }
     });
 
@@ -880,6 +948,113 @@ export const submitSavedInvoice = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error submitting invoice to FBR',
+      error: error.message
+    });
+  }
+};
+
+// Dashboard summary with monthly overview and recent invoices
+export const getDashboardSummary = async (req, res) => {
+  try {
+    const { Invoice, InvoiceItem } = req.tenantModels;
+    const sequelize = req.tenantDb;
+    const { Sequelize } = sequelize;
+    const { Op } = Sequelize;
+
+    // Default to last 12 months
+    const endDate = req.query.end_date ? new Date(req.query.end_date) : new Date();
+    const startDate = req.query.start_date
+      ? new Date(req.query.start_date)
+      : new Date(new Date(endDate).setMonth(endDate.getMonth() - 11, 1));
+
+    const whereDateRange = {
+      created_at: { [Op.between]: [startDate, endDate] }
+    };
+
+    // Key metrics
+    const [
+      totalCreated,
+      totalDrafts,
+      totalPosted,
+      totalAmount
+    ] = await Promise.all([
+      Invoice.count({ where: whereDateRange }),
+      Invoice.count({ where: { ...whereDateRange, status: 'draft' } }),
+      Invoice.count({ where: { ...whereDateRange, status: 'posted' } }),
+      InvoiceItem.sum('totalValues', { where: whereDateRange }).then((v) => v || 0)
+    ]);
+
+    // Monthly overview: counts by month for posted and saved
+    const monthlyRows = await Invoice.findAll({
+      attributes: [
+        [Sequelize.fn('DATE_FORMAT', Sequelize.col('created_at'), '%Y-%m'), 'month'],
+        [Sequelize.literal("SUM(CASE WHEN status = 'posted' THEN 1 ELSE 0 END)"), 'posted'],
+        [Sequelize.literal("SUM(CASE WHEN status = 'draft' THEN 1 ELSE 0 END)"), 'draft'],
+        [Sequelize.fn('COUNT', Sequelize.col('id')), 'total']
+      ],
+      where: whereDateRange,
+      group: [Sequelize.fn('DATE_FORMAT', Sequelize.col('created_at'), '%Y-%m')],
+      order: [[Sequelize.fn('DATE_FORMAT', Sequelize.col('created_at'), '%Y-%m'), 'ASC']]
+    });
+
+    const monthlyOverview = monthlyRows.map((row) => {
+      const plain = row.get({ plain: true });
+      return {
+        month: plain.month,
+        posted: Number(plain.posted || 0),
+        saved: Number(plain.saved || 0),
+        total: Number(plain.total || 0)
+      };
+    });
+
+    // Recent invoices with aggregated amount
+    const recentInvoicesRaw = await Invoice.findAll({
+      attributes: [
+        'id',
+        ['invoice_number', 'invoiceNumber'],
+        'status',
+        'created_at',
+        [Sequelize.fn('SUM', Sequelize.col('InvoiceItems.totalValues')), 'amount']
+      ],
+      include: [
+        { model: InvoiceItem, as: 'InvoiceItems', attributes: [] }
+      ],
+      group: ['Invoice.id'],
+      order: [['created_at', 'DESC']],
+      limit: 10,
+      subQuery: false
+    });
+
+    const recentInvoices = recentInvoicesRaw.map((row) => {
+      const plain = row.get({ plain: true });
+      return {
+        id: plain.id,
+        invoiceNumber: plain.invoiceNumber,
+        date: plain.created_at,
+        amount: Number(plain.amount || 0),
+        status: plain.status,
+        postedToFBR: plain.status === 'posted'
+      };
+    });
+
+    res.status(200).json({
+      success: true,
+      data: {
+        metrics: {
+          total_invoices_created: totalCreated,
+          total_invoices_draft: totalDrafts,
+          total_posted_to_fbr: totalPosted,
+          total_invoice_amount: Number(totalAmount || 0)
+        },
+        monthly_overview: monthlyOverview,
+        recent_invoices: recentInvoices
+      }
+    });
+  } catch (error) {
+    console.error('Error getting dashboard summary:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error retrieving dashboard summary',
       error: error.message
     });
   }

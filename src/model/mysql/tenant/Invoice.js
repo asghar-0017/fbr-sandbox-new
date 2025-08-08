@@ -65,7 +65,7 @@ export const createInvoiceModel = (sequelize) => {
       allowNull: true
     },
     status: {
-      type: DataTypes.ENUM('draft', 'saved', 'validated', 'submitted'),
+      type: DataTypes.ENUM('draft', 'posted'),
       allowNull: false,
       defaultValue: 'draft'
     },
