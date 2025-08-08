@@ -61,7 +61,7 @@ export const createInvoiceItemModel = (sequelize) => {
       allowNull: true
     },
     extraTax: {
-      type: DataTypes.STRING(50),
+      type: DataTypes.DECIMAL(10, 2),
       allowNull: true
     },
     furtherTax: {

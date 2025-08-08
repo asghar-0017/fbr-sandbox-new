@@ -120,6 +120,11 @@
       <p><strong>Invoice #:</strong>
         <%= invoice.invoice_number %>
       </p>
+      <% if (invoice.fbr_invoice_number && invoice.fbr_invoice_number !== invoice.invoice_number) { %>
+        <p style="font-size: 10px; color: #666; font-style: italic;"><strong>FBR #:</strong>
+          <%= invoice.fbr_invoice_number %>
+        </p>
+      <% } %>
     </div>
     <div class="invoice-info">
       <p><strong>Date:</strong>

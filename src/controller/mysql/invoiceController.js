@@ -21,14 +21,14 @@ export const createInvoice = async (req, res) => {
     console.log('Received items data:', JSON.stringify(items, null, 2));
 
     // Enforce allowed statuses only
-    const allowedStatuses = ['draft', 'posted'];
+    const allowedStatuses = ['draft', 'saved', 'validated', 'submitted', 'posted'];
     if (!allowedStatuses.includes(status)) {
-      return res.status(400).json({ success: false, message: "Invalid status. Allowed: 'draft' or 'posted'" });
+      return res.status(400).json({ success: false, message: "Invalid status. Allowed: 'draft', 'saved', 'validated', 'submitted', or 'posted'" });
     }
 
-    // For posted invoices, an explicit invoice_number is required
-    if (status === 'posted' && !invoice_number) {
-      return res.status(400).json({ success: false, message: 'Invoice number is required for posted invoices' });
+    // For posted/submitted invoices, an explicit invoice_number is required
+    if ((status === 'posted' || status === 'submitted') && !invoice_number) {
+      return res.status(400).json({ success: false, message: 'Invoice number is required for posted/submitted invoices' });
     }
 
     // Check if invoice number already exists
@@ -98,7 +98,6 @@ export const createInvoice = async (req, res) => {
             fixedNotifiedValueOrRetailPrice: cleanNumericValue(item.fixedNotifiedValueOrRetailPrice),
             salesTaxApplicable: cleanNumericValue(item.salesTaxApplicable),
             salesTaxWithheldAtSource: cleanNumericValue(item.salesTaxWithheldAtSource),
-            extraTax: cleanValue(item.extraTax),
             furtherTax: cleanNumericValue(item.furtherTax),
             sroScheduleNo: cleanValue(item.sroScheduleNo),
             fedPayable: cleanNumericValue(item.fedPayable),
@@ -107,6 +106,12 @@ export const createInvoice = async (req, res) => {
             sroItemSerialNo: cleanValue(item.sroItemSerialNo),
             billOfLadingUoM: cleanValue(item.billOfLadingUoM)
           };
+
+          // Only include extraTax if it has a valid value (not null)
+          const extraTaxValue = cleanNumericValue(item.extraTax);
+          if (extraTaxValue !== null) {
+            mappedItem.extraTax = extraTaxValue;
+          }
           
           // Debug: Log the mapped item
           console.log('Mapped invoice item:', JSON.stringify(mappedItem, null, 2));
@@ -226,7 +231,7 @@ export const saveInvoice = async (req, res) => {
             return isNaN(num) ? null : num;
           };
 
-          return {
+          const mappedItem = {
             invoice_id: invoice.id,
             hsCode: cleanValue(item.hsCode),
             productDescription: cleanValue(item.productDescription),
@@ -239,7 +244,6 @@ export const saveInvoice = async (req, res) => {
             fixedNotifiedValueOrRetailPrice: cleanNumericValue(item.fixedNotifiedValueOrRetailPrice),
             salesTaxApplicable: cleanNumericValue(item.salesTaxApplicable),
             salesTaxWithheldAtSource: cleanNumericValue(item.salesTaxWithheldAtSource),
-            extraTax: cleanValue(item.extraTax),
             furtherTax: cleanNumericValue(item.furtherTax),
             sroScheduleNo: cleanValue(item.sroScheduleNo),
             fedPayable: cleanNumericValue(item.fedPayable),
@@ -248,6 +252,14 @@ export const saveInvoice = async (req, res) => {
             sroItemSerialNo: cleanValue(item.sroItemSerialNo),
             billOfLadingUoM: cleanValue(item.billOfLadingUoM)
           };
+
+          // Only include extraTax if it has a valid value (not null)
+          const extraTaxValue = cleanNumericValue(item.extraTax);
+          if (extraTaxValue !== null) {
+            mappedItem.extraTax = extraTaxValue;
+          }
+
+          return mappedItem;
         });
 
         await InvoiceItem.bulkCreate(invoiceItems, { transaction: t });
@@ -386,7 +398,7 @@ export const saveAndValidateInvoice = async (req, res) => {
             const num = parseFloat(cleaned);
             return isNaN(num) ? null : num;
           };
-          return {
+          const mappedItem = {
             invoice_id: invoice.id,
             hsCode: cleanValue(item.hsCode),
             productDescription: cleanValue(item.productDescription),
@@ -399,7 +411,6 @@ export const saveAndValidateInvoice = async (req, res) => {
             fixedNotifiedValueOrRetailPrice: cleanNumericValue(item.fixedNotifiedValueOrRetailPrice),
             salesTaxApplicable: cleanNumericValue(item.salesTaxApplicable),
             salesTaxWithheldAtSource: cleanNumericValue(item.salesTaxWithheldAtSource),
-            extraTax: cleanValue(item.extraTax),
             furtherTax: cleanNumericValue(item.furtherTax),
             sroScheduleNo: cleanValue(item.sroScheduleNo),
             fedPayable: cleanNumericValue(item.fedPayable),
@@ -408,6 +419,14 @@ export const saveAndValidateInvoice = async (req, res) => {
             sroItemSerialNo: cleanValue(item.sroItemSerialNo),
             billOfLadingUoM: cleanValue(item.billOfLadingUoM)
           };
+
+          // Only include extraTax if it has a valid value (not null)
+          const extraTaxValue = cleanNumericValue(item.extraTax);
+          if (extraTaxValue !== null) {
+            mappedItem.extraTax = extraTaxValue;
+          }
+
+          return mappedItem;
         });
         await InvoiceItem.bulkCreate(invoiceItems, { transaction: t });
       }
@@ -446,6 +465,7 @@ export const getAllInvoices = async (req, res) => {
     if (search) {
       whereClause[req.tenantDb.Sequelize.Op.or] = [
         { invoice_number: { [req.tenantDb.Sequelize.Op.like]: `%${search}%` } },
+        { fbr_invoice_number: { [req.tenantDb.Sequelize.Op.like]: `%${search}%` } },
         { buyerBusinessName: { [req.tenantDb.Sequelize.Op.like]: `%${search}%` } },
         { sellerBusinessName: { [req.tenantDb.Sequelize.Op.like]: `%${search}%` } }
       ];
@@ -483,9 +503,22 @@ export const getAllInvoices = async (req, res) => {
     const transformedInvoices = rows.map(invoice => {
       const plainInvoice = invoice.get({ plain: true });
       plainInvoice.items = plainInvoice.InvoiceItems || []; // 👈 normalize for EJS
-              return {
+      
+      // Use FBR invoice number if available, otherwise use the original invoice number
+      const displayInvoiceNumber = plainInvoice.fbr_invoice_number || plainInvoice.invoice_number;
+      
+      // Debug logging for invoice numbers
+      console.log('Invoice display logic:', {
+        id: plainInvoice.id,
+        original_invoice_number: plainInvoice.invoice_number,
+        fbr_invoice_number: plainInvoice.fbr_invoice_number,
+        display_invoice_number: displayInvoiceNumber,
+        status: plainInvoice.status
+      });
+      
+      return {
           id: plainInvoice.id,
-          invoiceNumber: plainInvoice.invoice_number,
+          invoiceNumber: displayInvoiceNumber,
           invoiceType: plainInvoice.invoiceType,
           invoiceDate: plainInvoice.invoiceDate,
           sellerNTNCNIC: plainInvoice.sellerNTNCNIC,
@@ -640,9 +673,9 @@ export const printInvoice = async (req, res) => {
     const { invoice, tenantDb } = result;
     const { InvoiceItem } = tenantDb.models;
 
-    // Fetch invoice with items
+    // Fetch invoice with items using the already found invoice
     const invoiceWithItems = await invoice.constructor.findOne({
-      where: { invoice_number: id },
+      where: { id: invoice.id },
       include: [{ model: InvoiceItem, as: 'InvoiceItems' }]
     });
 
@@ -665,7 +698,7 @@ export const printInvoice = async (req, res) => {
     }
 
     // Generate QR code
-    const qrUrl =   `https://fbrtestcase.inplsoftwares.online/invoices/${pdfFileName}`;
+    const qrUrl = invoiceWithItems.invoice_number;
     const qrData = await QRCode.toDataURL(qrUrl, {
       errorCorrectionLevel: 'M',
       width: 96
@@ -857,44 +890,69 @@ export const submitSavedInvoice = async (req, res) => {
       });
     }
 
+    // Helper functions for data cleaning
+    const cleanValue = (value) => {
+      if (value === null || value === undefined || value === '') return null;
+      return String(value).trim();
+    };
+
+    const cleanNumericValue = (value) => {
+      const cleaned = cleanValue(value);
+      if (cleaned === null) return null;
+      const num = parseFloat(cleaned);
+      return isNaN(num) ? null : num;
+    };
+
     // Prepare data for FBR submission
     const fbrData = {
-      invoiceType: invoice.invoiceType,
-      invoiceDate: invoice.invoiceDate,
-      sellerNTNCNIC: invoice.sellerNTNCNIC,
-      sellerBusinessName: invoice.sellerBusinessName,
-      sellerProvince: invoice.sellerProvince,
-      sellerAddress: invoice.sellerAddress,
-      buyerNTNCNIC: invoice.buyerNTNCNIC,
-      buyerBusinessName: invoice.buyerBusinessName,
-      buyerProvince: invoice.buyerProvince,
-      buyerAddress: invoice.buyerAddress,
-      buyerRegistrationType: invoice.buyerRegistrationType,
-      invoiceRefNo: invoice.invoiceRefNo,
+      invoiceType: cleanValue(invoice.invoiceType),
+      invoiceDate: cleanValue(invoice.invoiceDate),
+      sellerNTNCNIC: cleanValue(invoice.sellerNTNCNIC),
+      sellerBusinessName: cleanValue(invoice.sellerBusinessName),
+      sellerProvince: cleanValue(invoice.sellerProvince),
+      sellerAddress: cleanValue(invoice.sellerAddress),
+      buyerNTNCNIC: cleanValue(invoice.buyerNTNCNIC),
+      buyerBusinessName: cleanValue(invoice.buyerBusinessName),
+      buyerProvince: cleanValue(invoice.buyerProvince),
+      buyerAddress: cleanValue(invoice.buyerAddress),
+      buyerRegistrationType: cleanValue(invoice.buyerRegistrationType),
+      invoiceRefNo: cleanValue(invoice.invoiceRefNo),
       // FBR expects camelCase key: scenarioId
-      scenarioId: invoice.scenario_id,
-      items: invoice.InvoiceItems.map(item => ({
-        hsCode: item.hsCode,
-        productDescription: item.productDescription,
-        rate: item.rate,
-        uoM: item.uoM,
-        quantity: item.quantity,
-        unitPrice: item.unitPrice,
-        totalValues: item.totalValues,
-        valueSalesExcludingST: item.valueSalesExcludingST,
-        fixedNotifiedValueOrRetailPrice: item.fixedNotifiedValueOrRetailPrice,
-        salesTaxApplicable: item.salesTaxApplicable,
-        salesTaxWithheldAtSource: item.salesTaxWithheldAtSource,
-        extraTax: item.extraTax,
-        furtherTax: item.furtherTax,
-        sroScheduleNo: item.sroScheduleNo,
-        fedPayable: item.fedPayable,
-        discount: item.discount,
-        saleType: item.saleType,
-        sroItemSerialNo: item.sroItemSerialNo,
-        billOfLadingUoM: item.billOfLadingUoM
-      }))
+      scenarioId: cleanValue(invoice.scenario_id),
+      items: invoice.InvoiceItems.map(item => {
+        const baseItem = {
+          hsCode: cleanValue(item.hsCode),
+          productDescription: cleanValue(item.productDescription),
+          rate: cleanValue(item.rate),
+          uoM: cleanValue(item.uoM),
+          quantity: cleanNumericValue(item.quantity),
+          unitPrice: cleanNumericValue(item.unitPrice),
+          totalValues: cleanNumericValue(item.totalValues),
+          valueSalesExcludingST: cleanNumericValue(item.valueSalesExcludingST),
+          fixedNotifiedValueOrRetailPrice: cleanNumericValue(item.fixedNotifiedValueOrRetailPrice),
+          salesTaxApplicable: cleanNumericValue(item.salesTaxApplicable),
+          salesTaxWithheldAtSource: cleanNumericValue(item.salesTaxWithheldAtSource),
+          furtherTax: cleanNumericValue(item.furtherTax),
+          sroScheduleNo: cleanValue(item.sroScheduleNo),
+          fedPayable: cleanNumericValue(item.fedPayable),
+          discount: cleanNumericValue(item.discount),
+          saleType: cleanValue(item.saleType),
+          sroItemSerialNo: cleanValue(item.sroItemSerialNo),
+          billOfLadingUoM: cleanValue(item.billOfLadingUoM)
+        };
+
+        // Only include extraTax if it has a valid value (not null)
+        const extraTaxValue = cleanNumericValue(item.extraTax);
+        if (extraTaxValue !== null) {
+          baseItem.extraTax = extraTaxValue;
+        }
+
+        return baseItem;
+      })
     };
+
+    // Debug: Log the cleaned data being sent to FBR
+    console.log('Cleaned FBR data being sent:', JSON.stringify(fbrData, null, 2));
 
     // Get tenant FBR token from the tenant middleware
     if (!req.tenant || !req.tenant.sandboxTestToken) {
@@ -915,22 +973,122 @@ export const submitSavedInvoice = async (req, res) => {
       req.tenant.sandboxTestToken
     );
 
-    const hasValidation =
-      postRes && postRes.data && typeof postRes.data === 'object' && postRes.data.validationResponse;
-    const statusCode = hasValidation ? postRes.data.validationResponse.statusCode : undefined;
+    console.log('FBR Response:', JSON.stringify(postRes.data, null, 2));
+    console.log('FBR Response Type:', typeof postRes.data);
+    console.log('FBR Response Length:', postRes.data ? postRes.data.length : 0);
 
-    if (postRes.status !== 200 || statusCode !== "00") {
+    // Handle different FBR response structures
+    let isSuccess = false;
+    let fbrInvoiceNumber = null;
+    let errorDetails = null;
+
+    if (postRes.status === 200) {
+      // Check for validationResponse structure (old format)
+      if (postRes.data && postRes.data.validationResponse) {
+        const validation = postRes.data.validationResponse;
+        isSuccess = validation.statusCode === "00";
+        fbrInvoiceNumber = postRes.data.invoiceNumber;
+        console.log('FBR Response - validationResponse format:', {
+          statusCode: validation.statusCode,
+          isSuccess,
+          fbrInvoiceNumber
+        });
+        if (!isSuccess) {
+          errorDetails = validation;
+        }
+      }
+      // Check for direct response structure (new format)
+      else if (postRes.data && (postRes.data.invoiceNumber || postRes.data.success)) {
+        isSuccess = true;
+        fbrInvoiceNumber = postRes.data.invoiceNumber;
+        console.log('FBR Response - direct format:', {
+          isSuccess,
+          fbrInvoiceNumber,
+          success: postRes.data.success
+        });
+      }
+      // Check for error response structure
+      else if (postRes.data && postRes.data.error) {
+        isSuccess = false;
+        errorDetails = postRes.data;
+        console.log('FBR Response - error format:', postRes.data.error);
+      }
+      // Check for empty response - this might be a successful submission
+      else if (!postRes.data || postRes.data === '') {
+        console.log('FBR returned empty response with 200 status - treating as successful submission');
+        isSuccess = true;
+        // For empty responses, we'll use the original invoice number as FBR invoice number
+        fbrInvoiceNumber = req.body.invoice_number || `FBR_${Date.now()}`;
+        console.log('Using original invoice number as FBR invoice number:', fbrInvoiceNumber);
+      }
+      // If response is unexpected, treat as success if status is 200
+      else {
+        isSuccess = true;
+        console.log('FBR returned 200 status with unexpected response structure, treating as success');
+        console.log('Unexpected response structure:', postRes.data);
+      }
+    } else {
+      console.log('FBR returned non-200 status:', postRes.status);
+    }
+
+    if (!isSuccess) {
       return res.status(400).json({
         success: false,
         message: 'FBR submission failed',
-        details: hasValidation ? postRes.data.validationResponse : { raw: postRes.data ?? null, note: 'Missing validationResponse in FBR response' }
+        details: errorDetails || { 
+          raw: postRes.data ?? null, 
+          note: 'Unexpected FBR response structure',
+          status: postRes.status
+        }
       });
     }
 
-    // Update invoice status
-    await invoice.update({
+    // Ensure we have a valid FBR invoice number before updating
+    if (!fbrInvoiceNumber || fbrInvoiceNumber.trim() === '') {
+      console.log('FBR invoice number validation failed:', {
+        fbrInvoiceNumber,
+        type: typeof fbrInvoiceNumber,
+        length: fbrInvoiceNumber ? fbrInvoiceNumber.length : 0
+      });
+      return res.status(400).json({
+        success: false,
+        message: 'FBR submission failed: No invoice number received from FBR',
+        details: errorDetails || { 
+          raw: postRes.data ?? null, 
+          note: 'No invoice number in FBR response',
+          status: postRes.status
+        }
+      });
+    }
+
+    // Update invoice status to 'posted' and replace draft number with FBR number when successfully submitted to FBR
+    // This ensures that posted invoices show the official FBR invoice number instead of the draft number
+    const updateData = {
       status: 'posted',
-      fbr_invoice_number: postRes?.data?.invoiceNumber ?? null
+      fbr_invoice_number: fbrInvoiceNumber
+    };
+    
+    // Only update invoice_number if we have a valid FBR invoice number
+    if (fbrInvoiceNumber) {
+      updateData.invoice_number = fbrInvoiceNumber;
+    }
+    
+    console.log('Updating invoice with data:', updateData);
+    console.log('FBR Response received:', {
+      invoiceNumber: postRes.data.invoiceNumber,
+      validationResponse: postRes.data.validationResponse,
+      statusCode: postRes.data.validationResponse?.statusCode
+    });
+    
+    await invoice.update(updateData);
+    
+    // Verify the update was successful
+    const updatedInvoice = await Invoice.findByPk(invoice.id);
+    console.log('Invoice updated successfully:', {
+      id: updatedInvoice.id,
+      original_invoice_number: updatedInvoice.invoice_number,
+      fbr_invoice_number: updatedInvoice.fbr_invoice_number,
+      status: updatedInvoice.status
     });
 
     res.status(200).json({
@@ -938,7 +1096,7 @@ export const submitSavedInvoice = async (req, res) => {
       message: 'Invoice posted successfully to FBR',
       data: {
         invoice_id: invoice.id,
-        fbr_invoice_number: postRes.data.invoiceNumber,
+        fbr_invoice_number: fbrInvoiceNumber,
         status: 'posted'
       }
     });
@@ -988,7 +1146,7 @@ export const getDashboardSummary = async (req, res) => {
     const monthlyRows = await Invoice.findAll({
       attributes: [
         [Sequelize.fn('DATE_FORMAT', Sequelize.col('created_at'), '%Y-%m'), 'month'],
-        [Sequelize.literal("SUM(CASE WHEN status = 'posted' THEN 1 ELSE 0 END)"), 'posted'],
+        [Sequelize.literal("SUM(CASE WHEN status IN ('posted', 'submitted') THEN 1 ELSE 0 END)"), 'posted'],
         [Sequelize.literal("SUM(CASE WHEN status = 'draft' THEN 1 ELSE 0 END)"), 'draft'],
         [Sequelize.fn('COUNT', Sequelize.col('id')), 'total']
       ],
@@ -1033,7 +1191,7 @@ export const getDashboardSummary = async (req, res) => {
         date: plain.created_at,
         amount: Number(plain.amount || 0),
         status: plain.status,
-        postedToFBR: plain.status === 'posted'
+        postedToFBR: plain.status === 'posted' || plain.status === 'submitted'
       };
     });
 

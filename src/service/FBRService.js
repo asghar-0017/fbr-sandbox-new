@@ -25,7 +25,10 @@ export const postData = async (endpoint, data, environment = 'sandbox', token = 
     console.log('FBR API Response:', {
       endpoint,
       status: response.status,
-      data: response.data
+      data: response.data,
+      dataType: typeof response.data,
+      dataLength: response.data ? response.data.length : 0,
+      headers: response.headers
     });
 
     return response;

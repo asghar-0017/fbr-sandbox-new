@@ -47,10 +47,18 @@ async function addStatusFieldToInvoices() {
         if (columns.length === 0) {
           console.log('  Adding status column...');
           await tenantConnection.execute(
-            "ALTER TABLE invoices ADD COLUMN status ENUM('draft', 'saved', 'validated', 'submitted') NOT NULL DEFAULT 'draft'"
+            "ALTER TABLE invoices ADD COLUMN status ENUM('draft', 'saved', 'validated', 'submitted', 'posted') NOT NULL DEFAULT 'draft'"
           );
         } else {
           console.log('  Status column already exists');
+          // Check if 'posted' is in the ENUM, if not update it
+          const column = columns[0];
+          if (!column.Type.includes("'posted'")) {
+            console.log('  Updating status column to include "posted" value...');
+            await tenantConnection.execute(
+              "ALTER TABLE invoices MODIFY COLUMN status ENUM('draft', 'saved', 'validated', 'submitted', 'posted') NOT NULL DEFAULT 'draft'"
+            );
+          }
         }
         
         // Check if fbr_invoice_number column exists
