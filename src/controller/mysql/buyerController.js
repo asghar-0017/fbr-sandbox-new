@@ -1,17 +1,18 @@
 // Buyer controller for multi-tenant MySQL system
 // This controller uses req.tenantModels.Buyer from tenant middleware
+import { postData } from '../../service/FBRService.js';
 
 // Create new buyer
 export const createBuyer = async (req, res) => {
   try {
     const { Buyer } = req.tenantModels;
-    const { buyerNTNCNIC, buyerBusinessName, buyerProvince, buyerAddress, buyerRegistrationType } = req.body;
+    const { buyerNTNCNIC, buyerBusinessName, buyerProvince, buyerAddress } = req.body;
 
     // Validate required fields
-    if (!buyerProvince || !buyerRegistrationType) {
+    if (!buyerProvince || !buyerNTNCNIC) {
       return res.status(400).json({
         success: false,
-        message: 'Buyer province and registration type are required'
+        message: 'Buyer province and NTN/CNIC are required'
       });
     }
 
@@ -27,6 +28,46 @@ export const createBuyer = async (req, res) => {
           message: `Buyer with NTN/CNIC "${buyerNTNCNIC}" already exists. Please use a different NTN/CNIC or update the existing buyer.`
         });
       }
+    }
+
+    // Fetch buyer registration type from FBR using provided token or tenant tokens
+    const { environment = 'production' } = req.query;
+    const headerToken = req.headers.authorization?.replace('Bearer ', '');
+    const fallbackToken = environment === 'production' 
+      ? req.tenant?.sandboxProductionToken 
+      : req.tenant?.sandboxTestToken;
+    const token = headerToken || fallbackToken;
+    if (!token) {
+      return res.status(401).json({
+        success: false,
+        message: 'Authorization token required to fetch registration type from FBR'
+      });
+    }
+
+    let buyerRegistrationType = null;
+    try {
+      const fbrResponse = await postData(
+        'dist/v1/Get_Reg_Type',
+        { Registration_No: buyerNTNCNIC },
+        environment,
+        token
+      );
+
+      const { statuscode, REGISTRATION_TYPE } = fbrResponse.data || {};
+      if (statuscode !== '00' || !REGISTRATION_TYPE) {
+        return res.status(400).json({
+          success: false,
+          message: 'Failed to fetch registration type from FBR',
+          fbrResponse: fbrResponse.data
+        });
+      }
+      buyerRegistrationType = REGISTRATION_TYPE;
+    } catch (err) {
+      return res.status(502).json({
+        success: false,
+        message: 'Error calling FBR Get_Reg_Type API',
+        error: err.response?.data || err.message
+      });
     }
 
     // Create buyer
