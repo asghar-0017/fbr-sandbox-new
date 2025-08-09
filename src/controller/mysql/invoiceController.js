@@ -992,13 +992,21 @@ export const submitSavedInvoice = async (req, res) => {
           billOfLadingUoM: cleanValue(item.billOfLadingUoM)
         };
 
-        // Only include extraTax when it's a positive value (> 0) and not applicable for reduced/exempt
+        // Only include extraTax when it's a positive numeric value and allowed for this scenario/rate
         const extraTaxValue = cleanNumericValue(item.extraTax);
         const isReduced = (cleanValue(item.saleType) || '').trim() === 'Goods at Reduced Rate';
         const rateValue = cleanValue(item.rate) || '';
         const isExempt = typeof rateValue === 'string' && rateValue.toLowerCase() === 'exempt';
-        if (extraTaxValue !== null && Number(extraTaxValue) > 0 && !isReduced && !isExempt) {
-          baseItem.extraTax = extraTaxValue;
+        const scenarioIdValue = cleanValue(invoice.scenario_id);
+        const shouldIncludeExtraTax = (
+          extraTaxValue !== null &&
+          Number(extraTaxValue) > 0 &&
+          !isReduced &&
+          !isExempt &&
+          scenarioIdValue !== 'SN005'
+        );
+        if (shouldIncludeExtraTax && isFinite(Number(extraTaxValue))) {
+          baseItem.extraTax = Number(parseFloat(extraTaxValue).toFixed(2));
         }
 
         return baseItem;
