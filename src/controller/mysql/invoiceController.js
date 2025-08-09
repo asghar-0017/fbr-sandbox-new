@@ -363,8 +363,9 @@ export const saveAndValidateInvoice = async (req, res) => {
       validationErrors.push('At least one item is required');
     } else {
       items.forEach((item, index) => {
-        if (!item.hsCode || !item.productDescription || !item.rate || !item.uoM) {
-          validationErrors.push(`Item ${index + 1} has incomplete information`);
+        // Align with FBR: productDescription can be null/empty. Require hsCode, rate, and uoM only.
+        if (!item.hsCode || !item.rate || !item.uoM) {
+          validationErrors.push(`Item ${index + 1} has incomplete information (hsCode, rate, and uoM are required)`);
         }
       });
     }
