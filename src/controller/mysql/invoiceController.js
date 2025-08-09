@@ -7,6 +7,39 @@ import numberToWords from 'number-to-words';
 import TenantDatabaseService from '../../service/TenantDatabaseService.js';
 const { toWords } = numberToWords;
 
+// Helper function to generate system invoice ID
+const generateSystemInvoiceId = async (Invoice) => {
+  try {
+    // Get the highest existing system invoice ID for this tenant
+    const lastInvoice = await Invoice.findOne({
+      where: {
+        system_invoice_id: {
+          [Invoice.sequelize.Sequelize.Op.like]: 'INV-%'
+        }
+      },
+      order: [['system_invoice_id', 'DESC']],
+      attributes: ['system_invoice_id']
+    });
+
+    let nextNumber = 1;
+    
+    if (lastInvoice && lastInvoice.system_invoice_id) {
+      // Extract the number from the last invoice ID (e.g., "INV-0005" -> 5)
+      const match = lastInvoice.system_invoice_id.match(/INV-(\d+)/);
+      if (match) {
+        nextNumber = parseInt(match[1]) + 1;
+      }
+    }
+
+    // Format as INV-0001, INV-0002, etc.
+    return `INV-${nextNumber.toString().padStart(4, '0')}`;
+  } catch (error) {
+    console.error('Error generating system invoice ID:', error);
+    // Fallback to timestamp-based ID if there's an error
+    return `INV-${Date.now().toString().slice(-4)}`;
+  }
+};
+
 export const createInvoice = async (req, res) => {
   try {
     const { Invoice, InvoiceItem } = req.tenantModels;
@@ -46,9 +79,13 @@ export const createInvoice = async (req, res) => {
 
     // Create invoice with transaction
     const result = await req.tenantDb.transaction(async (t) => {
+      // Generate system invoice ID
+      const systemInvoiceId = await generateSystemInvoiceId(Invoice);
+      
       // Create invoice
       const invoice = await Invoice.create({
         invoice_number: invoice_number || `DRAFT_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        system_invoice_id: systemInvoiceId,
         invoiceType,
         invoiceDate,
         sellerNTNCNIC,
@@ -132,6 +169,7 @@ export const createInvoice = async (req, res) => {
       data: {
         invoice_id: result.id,
         invoice_number: result.invoice_number,
+        system_invoice_id: result.system_invoice_id,
         status: result.status
       }
     });
@@ -194,8 +232,12 @@ export const saveInvoice = async (req, res) => {
       } else {
         // Generate a temporary invoice number for draft
         const tempInvoiceNumber = `DRAFT_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        // Generate system invoice ID
+        const systemInvoiceId = await generateSystemInvoiceId(Invoice);
+        
         invoice = await Invoice.create({
           invoice_number: tempInvoiceNumber,
+          system_invoice_id: systemInvoiceId,
           invoiceType,
           invoiceDate,
           sellerNTNCNIC,
@@ -274,6 +316,7 @@ export const saveInvoice = async (req, res) => {
       data: {
         invoice_id: result.id,
         invoice_number: result.invoice_number,
+        system_invoice_id: result.system_invoice_id,
         status: result.status
       }
     });
@@ -364,8 +407,12 @@ export const saveAndValidateInvoice = async (req, res) => {
         }, { transaction: t });
         await InvoiceItem.destroy({ where: { invoice_id: invoice.id }, transaction: t });
       } else {
+        // Generate system invoice ID
+        const systemInvoiceId = await generateSystemInvoiceId(Invoice);
+        
         invoice = await Invoice.create({
           invoice_number: tempInvoiceNumber,
+          system_invoice_id: systemInvoiceId,
           invoiceType,
           invoiceDate,
           sellerNTNCNIC,
@@ -439,6 +486,7 @@ export const saveAndValidateInvoice = async (req, res) => {
       data: {
         invoice_id: result.id,
         invoice_number: result.invoice_number,
+        system_invoice_id: result.system_invoice_id,
         status: result.status
       }
     });
@@ -519,6 +567,7 @@ export const getAllInvoices = async (req, res) => {
       return {
           id: plainInvoice.id,
           invoiceNumber: displayInvoiceNumber,
+          systemInvoiceId: plainInvoice.system_invoice_id,
           invoiceType: plainInvoice.invoiceType,
           invoiceDate: plainInvoice.invoiceDate,
           sellerNTNCNIC: plainInvoice.sellerNTNCNIC,
@@ -588,6 +637,7 @@ export const getInvoiceById = async (req, res) => {
     const transformedInvoice = {
       id: plainInvoice.id,
       invoiceNumber: plainInvoice.invoice_number,
+      systemInvoiceId: plainInvoice.system_invoice_id,
       invoiceType: plainInvoice.invoiceType,
       invoiceDate: plainInvoice.invoiceDate,
       sellerNTNCNIC: plainInvoice.sellerNTNCNIC,

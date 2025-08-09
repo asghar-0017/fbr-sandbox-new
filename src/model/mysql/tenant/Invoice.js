@@ -72,6 +72,11 @@ export const createInvoiceModel = (sequelize) => {
     fbr_invoice_number: {
       type: DataTypes.STRING(100),
       allowNull: true
+    },
+    system_invoice_id: {
+      type: DataTypes.STRING(20),
+      allowNull: true,
+      unique: true
     }
   }, {
     tableName: 'invoices',
