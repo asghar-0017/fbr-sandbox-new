@@ -144,10 +144,10 @@ export const createInvoice = async (req, res) => {
             billOfLadingUoM: cleanValue(item.billOfLadingUoM)
           };
 
-          // Only include extraTax when it's a positive value (> 0)
+          // Only include extraTax when it's a valid positive value
           const extraTaxValue = cleanNumericValue(item.extraTax);
-          if (extraTaxValue !== null && Number(extraTaxValue) > 0) {
-            mappedItem.extraTax = extraTaxValue;
+          if (extraTaxValue !== null && isFinite(Number(extraTaxValue)) && Number(extraTaxValue) > 0) {
+            mappedItem.extraTax = Number(parseFloat(extraTaxValue).toFixed(2));
           }
           
           // Debug: Log the mapped item
@@ -295,10 +295,10 @@ export const saveInvoice = async (req, res) => {
             billOfLadingUoM: cleanValue(item.billOfLadingUoM)
           };
 
-          // Only include extraTax when it's a positive value (> 0)
+          // Only include extraTax when it's a valid positive value
           const extraTaxValue = cleanNumericValue(item.extraTax);
-          if (extraTaxValue !== null && Number(extraTaxValue) > 0) {
-            mappedItem.extraTax = extraTaxValue;
+          if (extraTaxValue !== null && isFinite(Number(extraTaxValue)) && Number(extraTaxValue) > 0) {
+            mappedItem.extraTax = Number(parseFloat(extraTaxValue).toFixed(2));
           }
 
           return mappedItem;
@@ -468,10 +468,10 @@ export const saveAndValidateInvoice = async (req, res) => {
             billOfLadingUoM: cleanValue(item.billOfLadingUoM)
           };
 
-          // Only include extraTax when it's a positive value (> 0)
+          // Only include extraTax when it's a valid positive value
           const extraTaxValue = cleanNumericValue(item.extraTax);
-          if (extraTaxValue !== null && Number(extraTaxValue) > 0) {
-            mappedItem.extraTax = extraTaxValue;
+          if (extraTaxValue !== null && isFinite(Number(extraTaxValue)) && Number(extraTaxValue) > 0) {
+            mappedItem.extraTax = Number(parseFloat(extraTaxValue).toFixed(2));
           }
 
           return mappedItem;
@@ -995,8 +995,11 @@ export const submitSavedInvoice = async (req, res) => {
         // Align with validation behavior: include extraTax for non-reduced sale types, even when 0
         const extraTaxValue = cleanNumericValue(item.extraTax);
         const isReduced = (cleanValue(item.saleType) || '').trim() === 'Goods at Reduced Rate';
-        if (!isReduced && extraTaxValue !== null && isFinite(Number(extraTaxValue))) {
+        if (!isReduced && extraTaxValue !== null && isFinite(Number(extraTaxValue)) && Number(extraTaxValue) >= 0) {
           baseItem.extraTax = Number(parseFloat(extraTaxValue).toFixed(2));
+        } else if (!isReduced) {
+          // Ensure extraTax is 0 for non-reduced sale types when invalid or negative
+          baseItem.extraTax = 0;
         }
 
         return baseItem;
