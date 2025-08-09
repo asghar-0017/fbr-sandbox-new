@@ -363,9 +363,8 @@ export const saveAndValidateInvoice = async (req, res) => {
       validationErrors.push('At least one item is required');
     } else {
       items.forEach((item, index) => {
-        // Align with FBR: productDescription can be null/empty. Require hsCode, rate, and uoM only.
-        if (!item.hsCode || !item.rate || !item.uoM) {
-          validationErrors.push(`Item ${index + 1} has incomplete information (hsCode, rate, and uoM are required)`);
+        if (!item.hsCode || !item.productDescription || !item.rate || !item.uoM) {
+          validationErrors.push(`Item ${index + 1} has incomplete information`);
         }
       });
     }
@@ -992,11 +991,13 @@ export const submitSavedInvoice = async (req, res) => {
           billOfLadingUoM: cleanValue(item.billOfLadingUoM)
         };
 
-        // Align with validation behavior: include extraTax for non-reduced sale types, even when 0
+        // Only include extraTax when it's a positive value (> 0) and not applicable for reduced/exempt
         const extraTaxValue = cleanNumericValue(item.extraTax);
         const isReduced = (cleanValue(item.saleType) || '').trim() === 'Goods at Reduced Rate';
-        if (!isReduced && extraTaxValue !== null && isFinite(Number(extraTaxValue))) {
-          baseItem.extraTax = Number(parseFloat(extraTaxValue).toFixed(2));
+        const rateValue = cleanValue(item.rate) || '';
+        const isExempt = typeof rateValue === 'string' && rateValue.toLowerCase() === 'exempt';
+        if (extraTaxValue !== null && Number(extraTaxValue) > 0 && !isReduced && !isExempt) {
+          baseItem.extraTax = extraTaxValue;
         }
 
         return baseItem;
@@ -1037,7 +1038,7 @@ export const submitSavedInvoice = async (req, res) => {
     // Handle different FBR response structures
     let isSuccess = false;
     let fbrInvoiceNumber = null;
-    let errorDetails = null;
+    let errorDetails = null
 
     if (postRes.status === 200) {
       // Check for validationResponse structure (old format)
