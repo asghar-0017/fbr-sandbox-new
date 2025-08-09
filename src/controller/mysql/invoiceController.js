@@ -144,9 +144,9 @@ export const createInvoice = async (req, res) => {
             billOfLadingUoM: cleanValue(item.billOfLadingUoM)
           };
 
-          // Only include extraTax if it has a valid value (not null)
+          // Only include extraTax when it's a positive value (> 0)
           const extraTaxValue = cleanNumericValue(item.extraTax);
-          if (extraTaxValue !== null) {
+          if (extraTaxValue !== null && Number(extraTaxValue) > 0) {
             mappedItem.extraTax = extraTaxValue;
           }
           
@@ -295,9 +295,9 @@ export const saveInvoice = async (req, res) => {
             billOfLadingUoM: cleanValue(item.billOfLadingUoM)
           };
 
-          // Only include extraTax if it has a valid value (not null)
+          // Only include extraTax when it's a positive value (> 0)
           const extraTaxValue = cleanNumericValue(item.extraTax);
-          if (extraTaxValue !== null) {
+          if (extraTaxValue !== null && Number(extraTaxValue) > 0) {
             mappedItem.extraTax = extraTaxValue;
           }
 
@@ -467,9 +467,9 @@ export const saveAndValidateInvoice = async (req, res) => {
             billOfLadingUoM: cleanValue(item.billOfLadingUoM)
           };
 
-          // Only include extraTax if it has a valid value (not null)
+          // Only include extraTax when it's a positive value (> 0)
           const extraTaxValue = cleanNumericValue(item.extraTax);
-          if (extraTaxValue !== null) {
+          if (extraTaxValue !== null && Number(extraTaxValue) > 0) {
             mappedItem.extraTax = extraTaxValue;
           }
 
@@ -991,9 +991,12 @@ export const submitSavedInvoice = async (req, res) => {
           billOfLadingUoM: cleanValue(item.billOfLadingUoM)
         };
 
-        // Only include extraTax if it has a valid value (not null)
+        // Only include extraTax when it's a positive value (> 0) and not applicable for reduced/exempt
         const extraTaxValue = cleanNumericValue(item.extraTax);
-        if (extraTaxValue !== null) {
+        const isReduced = (cleanValue(item.saleType) || '').trim() === 'Goods at Reduced Rate';
+        const rateValue = cleanValue(item.rate) || '';
+        const isExempt = typeof rateValue === 'string' && rateValue.toLowerCase() === 'exempt';
+        if (extraTaxValue !== null && Number(extraTaxValue) > 0 && !isReduced && !isExempt) {
           baseItem.extraTax = extraTaxValue;
         }
 
@@ -1025,7 +1028,12 @@ export const submitSavedInvoice = async (req, res) => {
 
     console.log('FBR Response:', JSON.stringify(postRes.data, null, 2));
     console.log('FBR Response Type:', typeof postRes.data);
-    console.log('FBR Response Length:', postRes.data ? postRes.data.length : 0);
+    const dataSizeInfo = Array.isArray(postRes.data)
+      ? postRes.data.length
+      : (typeof postRes.data === 'object' && postRes.data !== null)
+        ? Object.keys(postRes.data).length
+        : (typeof postRes.data === 'string' ? postRes.data.length : 0);
+    console.log('FBR Response Data Size:', dataSizeInfo);
 
     // Handle different FBR response structures
     let isSuccess = false;
@@ -1082,14 +1090,44 @@ export const submitSavedInvoice = async (req, res) => {
     }
 
     if (!isSuccess) {
+      const details = errorDetails || { 
+        raw: postRes.data ?? null, 
+        note: 'Unexpected FBR response structure',
+        status: postRes.status
+      };
+
+      const collectErrorMessages = (det) => {
+        const messages = [];
+        if (det && typeof det === 'object') {
+          if (det.error) messages.push(det.error);
+          if (Array.isArray(det.invoiceStatuses)) {
+            det.invoiceStatuses.forEach((s) => {
+              if (s?.error) messages.push(`Item ${s.itemSNo}: ${s.error}`);
+            });
+          }
+          if (det.validationResponse) {
+            const v = det.validationResponse;
+            if (v?.error) messages.push(v.error);
+            if (Array.isArray(v?.invoiceStatuses)) {
+              v.invoiceStatuses.forEach((s) => {
+                if (s?.error) messages.push(`Item ${s.itemSNo}: ${s.error}`);
+              });
+            }
+          }
+        }
+        return messages.filter(Boolean);
+      };
+
+      const errorMessages = collectErrorMessages(details);
+      const message = errorMessages.length
+        ? `FBR submission failed: ${errorMessages.join('; ')}`
+        : 'FBR submission failed';
+
       return res.status(400).json({
         success: false,
-        message: 'FBR submission failed',
-        details: errorDetails || { 
-          raw: postRes.data ?? null, 
-          note: 'Unexpected FBR response structure',
-          status: postRes.status
-        }
+        message,
+        code: details?.statusCode || details?.errorCode || details?.validationResponse?.statusCode,
+        details
       });
     }
 
