@@ -15,6 +15,7 @@ router.use(authenticateToken, identifyTenant);
 router.post('/invoices', invoiceController.createInvoice);
 router.post('/invoices/save', invoiceController.saveInvoice);
 router.post('/invoices/save-validate', invoiceController.saveAndValidateInvoice);
+
 router.get('/invoices', invoiceController.getAllInvoices);
 router.get('/invoices/number/:invoiceNumber', invoiceController.getInvoiceByNumber);
 router.get('/invoices/stats/summary', invoiceController.getInvoiceStats);

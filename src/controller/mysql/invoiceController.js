@@ -47,27 +47,25 @@ export const createInvoice = async (req, res) => {
       invoice_number, invoiceType, invoiceDate,
       sellerNTNCNIC, sellerBusinessName, sellerProvince, sellerAddress,
       buyerNTNCNIC, buyerBusinessName, buyerProvince, buyerAddress, buyerRegistrationType,
-      invoiceRefNo, scenario_id, items, status = 'draft', fbr_invoice_number = null
+      invoiceRefNo, scenario_id, items, status = 'posted', fbr_invoice_number = null
     } = req.body;
+
+    // Use fbr_invoice_number as invoice_number if invoice_number is not provided
+    const finalInvoiceNumber = invoice_number || fbr_invoice_number;
 
     // Debug: Log the received items data
     console.log('Received items data:', JSON.stringify(items, null, 2));
 
     // Enforce allowed statuses only
-    const allowedStatuses = ['draft', 'saved', 'validated', 'submitted', 'posted'];
+    const allowedStatuses = ['draft', 'posted'];
     if (!allowedStatuses.includes(status)) {
-      return res.status(400).json({ success: false, message: "Invalid status. Allowed: 'draft', 'saved', 'validated', 'submitted', or 'posted'" });
+      return res.status(400).json({ success: false, message: "Invalid status. Allowed: 'draft', or 'posted'" });
     }
 
-    // For posted/submitted invoices, an explicit invoice_number is required
-    if ((status === 'posted' || status === 'submitted') && !invoice_number) {
-      return res.status(400).json({ success: false, message: 'Invoice number is required for posted/submitted invoices' });
-    }
-
-    // Check if invoice number already exists
+    // Check if invoice number already exists (only if provided)
     let existingInvoice = null;
-    if (invoice_number) {
-      existingInvoice = await Invoice.findOne({ where: { invoice_number } });
+    if (finalInvoiceNumber) {
+      existingInvoice = await Invoice.findOne({ where: { invoice_number: finalInvoiceNumber } });
     }
 
     if (existingInvoice) {
@@ -82,9 +80,9 @@ export const createInvoice = async (req, res) => {
       // Generate system invoice ID
       const systemInvoiceId = await generateSystemInvoiceId(Invoice);
       
-      // Create invoice
+      // Create invoice with posted status
       const invoice = await Invoice.create({
-        invoice_number: invoice_number || `DRAFT_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        invoice_number: finalInvoiceNumber,
         system_invoice_id: systemInvoiceId,
         invoiceType,
         invoiceDate,
@@ -99,7 +97,7 @@ export const createInvoice = async (req, res) => {
         buyerRegistrationType,
         invoiceRefNo,
         scenario_id,
-        status,
+        status: 'posted', // Always set as posted when using createInvoice
         fbr_invoice_number
       }, { transaction: t });
 
@@ -163,14 +161,15 @@ export const createInvoice = async (req, res) => {
       return invoice;
     });
 
-    res.status(201).json({
+    res.status(200).json({
       success: true,
-      message: 'Invoice created successfully',
+      message: 'Invoice created successfully with FBR invoice number',
       data: {
         invoice_id: result.id,
         invoice_number: result.invoice_number,
         system_invoice_id: result.system_invoice_id,
-        status: result.status
+        status: result.status,
+        fbr_invoice_number: result.fbr_invoice_number
       }
     });
   } catch (error) {
@@ -524,10 +523,11 @@ export const getAllInvoices = async (req, res) => {
       whereClause.invoiceType = sale_type;
     }
 
-    // Add status filter
+    // Add status filter - show all invoices by default
     if (status && status !== 'All') {
       whereClause.status = status;
     }
+    // Removed default filter to show all invoices (draft, saved, validated, posted, etc.)
 
     // Add date range filter
     if (start_date && end_date) {
@@ -1198,6 +1198,8 @@ export const submitSavedInvoice = async (req, res) => {
     });
   }
 };
+
+
 
 // Dashboard summary with monthly overview and recent invoices
 export const getDashboardSummary = async (req, res) => {
