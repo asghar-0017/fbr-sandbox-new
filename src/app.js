@@ -54,7 +54,7 @@ app.use('/api/tenant/:tenantId', buyerRoutes);
 app.use('/api/tenant/:tenantId', invoiceRoutes);
 
 // HS Code Routes (with caching)
-app.use('/api', hsCodeRoutes);
+app.use('/api', hsCodeRoutes)
 
 // Public Invoice Routes
 app.use('/api', publicInvoiceRoutes);
