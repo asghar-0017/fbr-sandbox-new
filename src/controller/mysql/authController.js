@@ -93,11 +93,7 @@ export const login = async (req, res) => {
     }
 
     // Find admin user
-    const admin = await AdminUser.findOne({ 
-      where: { 
-        email: email 
-      } 
-    });
+    const admin = await AdminUser.findOne({ where: { email } });
 
     if (!admin) {
       return res.status(401).json(
@@ -120,22 +116,6 @@ export const login = async (req, res) => {
       );
     }
 
-    // Check for existing sessions and limit them
-    const existingSessions = await AdminSession.findAll({
-      where: { admin_id: admin.id }
-    });
-
-    if (existingSessions.length >= 3) {
-      // Remove oldest sessions, keep only 2 most recent
-      const sessionsToDelete = existingSessions
-        .sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
-        .slice(0, existingSessions.length - 2);
-      
-      await AdminSession.destroy({
-        where: { id: { [Op.in]: sessionsToDelete.map(s => s.id) } }
-      });
-    }
-
     // Generate JWT token
     const token = jwt.sign(
       { 
@@ -148,7 +128,7 @@ export const login = async (req, res) => {
       { expiresIn: '24h' }
     );
 
-    // Create new session
+    // Create new session (no session limit anymore)
     await AdminSession.create({ 
       admin_id: admin.id, 
       token 
